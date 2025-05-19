@@ -1,0 +1,5 @@
+*.npy filter=lfs diff=lfs merge=lfs -text
+<<<<<<< HEAD
+embeddings/*.npy filter=lfs diff=lfs merge=lfs -text
+=======
+>>>>>>> df0a5c97df43b1ecae5613a36e8fa2f80100c460

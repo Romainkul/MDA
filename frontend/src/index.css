@@ -1,0 +1,71 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ✅ Override potential background conflicts */
+html, body {
+  background-color: white !important;
+  color: black !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* ✅ Optional: custom placeholder styling */
+input::placeholder,
+textarea::placeholder {
+  color: #888888;
+  opacity: 1;
+}
+
+/* Firefox */
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #888888;
+  opacity: 1;
+}
+
+/* Chrome/Safari/Opera */
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #888888;
+}
+
+/* Internet Explorer */
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  color: #888888;
+}
+
+/* ✅ Chakra already styles buttons. Remove conflicting global rules */
+button {
+  all: unset;
+}
+
+/* ✅ Keep link styling simple */
+a {
+  font-weight: 500;
+  color: #003399; /* EU blue */
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ✅ Heading styling left minimal to Chakra's theme */
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* ✅ Optional: remove dark modal overrides */
+[data-scope="dialog"] {
+  background: white !important;
+  --bg-currentcolor: white !important;
+}
