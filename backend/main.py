@@ -5,7 +5,7 @@ from fastapi import Request
 #from fastapi import current_app
 from pydantic import BaseModel
 
-from rag import get_rag_chain, RAGRequest, RAGResponse
+#from rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
 
 import polars as pl
