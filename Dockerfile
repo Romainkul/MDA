@@ -24,7 +24,10 @@ RUN apt-get update && \
     apt-get install -y nginx python3-pip && \
     rm -rf /var/lib/apt/lists/* &&\
     rm -f /etc/nginx/sites-enabled/default \
-   && rm -f /etc/nginx/conf.d/default.conf
+   && rm -f /etc/nginx/conf.d/default.conf 
+
+RUN mkdir -p /var/run/nginx \
+ && chmod 0777 /var/run/nginx
 
 
 # Create nginx temp dirs with correct permissions
