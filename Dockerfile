@@ -27,7 +27,7 @@ RUN apt-get update && \
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/log/nginx \
-             /var/lib/nginx && 
+             /var/lib/nginx
 RUN touch  /var/run/nginx.pid 
 
 RUN chown -R www-data:www-data /var/cache/nginx \
