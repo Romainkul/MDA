@@ -26,8 +26,20 @@ RUN apt-get update && \
     rm -f /etc/nginx/sites-enabled/default \
    && rm -f /etc/nginx/conf.d/default.conf 
 
-RUN mkdir -p /var/run/nginx \
- && chmod 0777 /var/run/nginx
+RUN mkdir -p \
+      /var/cache/nginx/client_temp \
+      /var/cache/nginx/proxy_temp \
+      /var/cache/nginx/fastcgi_temp \
+      /var/cache/nginx/scgi_temp \
+      /var/cache/nginx/uwsgi_temp \
+      /var/log/nginx \
+      /var/run/nginx \
+      /var/lib/nginx/body \
+      /var/lib/nginx/proxy \
+      /var/lib/nginx/fastcgi \
+      /var/lib/nginx/scgi \
+      /var/lib/nginx/uwsgi \
+ && chmod -R a+rwx /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
 
 # Create nginx temp dirs with correct permissions
