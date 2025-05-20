@@ -60,7 +60,7 @@ COPY --from=backend-builder /app/backend ./app
 COPY --chown=pn nginx.conf /etc/nginx/sites-available/default
 
 COPY --chown=pn . .
-
+RUN pip install --no-cache-dir gunicorn uvicorn
 # Override entrypoint to use custom run script
 CMD ["bash", "run.sh"]
 
