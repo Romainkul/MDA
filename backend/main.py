@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     source_blob_name = "data/consolidated_clean.parquet"
     storage_client = storage.Client()
     data = storage_client.bucket(bucket_name).blob(source_blob_name).download_as_bytes()
-    df     = pl.read_parquet(io.BytesIO(data))
+    app.state.df = pl.read_parquet(io.BytesIO(data))
     yield
 
 app = FastAPI(lifespan=lifespan)
