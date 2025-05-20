@@ -54,11 +54,11 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     touch /var/log/nginx/error.log /var/log/nginx/access.log && \
     chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
-
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
-    python3 -m pip install --no-cache-dir fastapi starlette uvicorn
+RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt \
+ && python3 -m pip install --no-cache-dir fastapi starlette uvicorn \
+ && python3 -m pip install --no-cache-dir --force-reinstall numpy
 
 # Copy frontend build and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
@@ -68,6 +68,7 @@ COPY --from=backend-builder /app/backend /app/app
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY run.sh /app/run.sh
 RUN chmod +x /app/run.sh
+RUN chmod -R a+rwx /var/log/nginx
 
 WORKDIR /app
 
