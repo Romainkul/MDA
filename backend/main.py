@@ -7,29 +7,23 @@ import gcsfs
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ——— Load once, in memory ———
     bucket = "mda_eu_project"
     path   = "data/consolidated_clean.parquet"
     uri    = f"gs://{bucket}/{path}"
 
-    # gcsfs will pick up GOOGLE_APPLICATION_CREDENTIALS automatically
     fs = gcsfs.GCSFileSystem()
 
-    # Open a streaming handle & let Polars read it directly
     with fs.open(uri, "rb") as f:
         df = pl.read_parquet(f)
 
-    # Pre-normalize lowercase text columns for fast filtering
     for col in ("title", "status", "legalBasis"):
         df = df.with_columns(pl.col(col).str.to_lowercase().alias(f"_{col}_lc"))
 
-    # Cache filter dropdowns
     statuses      = df["_status_lc"].unique().to_list()
     legal_bases   = df["_legalBasis_lc"].unique().to_list()
     organizations = df.explode("list_name")["list_name"].unique().to_list()
     countries     = df.explode("list_country")["list_country"].unique().to_list()
 
-    # Store in app.state
     app.state.df             = df
     app.state.statuses       = statuses
     app.state.legal_bases    = legal_bases
@@ -37,9 +31,7 @@ async def lifespan(app: FastAPI):
     app.state.countries_list = countries
 
     yield
-    # (no teardown needed)
-
-# Create app with our lifespan
+    
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
@@ -48,17 +40,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/api/projects")
 def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str = ""):
     df = app.state.df
     start = page * limit
     sel = df
 
-    if search:
+    if search != "":
         sel = sel.filter(pl.col("_title_lc").str.contains(search.lower()))
 
-    if status:
+    if status != "":
         sel = sel.filter(pl.col("_status_lc") == status.lower())
 
     return (
@@ -71,7 +62,6 @@ def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str =
            ])
            .to_dicts()
     )
-
 
 @app.get("/api/filters")
 def get_filters():
