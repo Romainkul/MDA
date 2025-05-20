@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 RUN pip install --no-cache-dir gunicorn uvicorn
 
+# Stage 3: runtime image with nginx and run script
+FROM nikolaik/python-nodejs:python3.10-nodejs18
+
 # Install nginx
 USER root
 RUN apt-get update && \
@@ -48,4 +51,5 @@ RUN chmod +x run.sh
 EXPOSE 4444
 
 # Override entrypoint to use custom run script
-ENTRYPOINT ["/bin/bash", "run.sh"]
+CMD ["bash", "run.sh"]
+
