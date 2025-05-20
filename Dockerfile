@@ -52,7 +52,7 @@ WORKDIR /app
 # Expose non-privileged port
 EXPOSE 4444
 
-ENTRYPOINT ["/bin/bash", "/app/run.sh"]
+CMD ["bash", "run.sh"]
 
 #COPY --chown=pn . .
 #RUN pip install --no-cache-dir -r backend/requirements.txt
