@@ -12,8 +12,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 DATA_PATH = os.getenv("PARQUET_PATH", "data/consolidated_clean.parquet")
 full_path = Path(__file__).parent / DATA_PATH
 
-if not full_path.exists():
-    raise RuntimeError(f"Data file not found at {full_path}")
+#if not full_path.exists():
+#    raise RuntimeError(f"Data file not found at {full_path}")
 
 df = pl.read_parquet(str(full_path))
 
