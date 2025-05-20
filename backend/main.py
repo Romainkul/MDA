@@ -52,7 +52,7 @@ def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str =
 
 @app.get("/api/filters")
 def get_filters(status: str = "", organization: str = "", country: str = "", legalBasis: str = ""):
-    dff = app.state.df.lazy()
+    dff = app.state.df.clone()
 
     if status:
         dff = dff.filter(pl.col("status").str.to_lowercase() == status.lower())
@@ -82,7 +82,7 @@ def get_filters(status: str = "", organization: str = "", country: str = "", leg
 @app.get("/api/stats")
 def get_stats(request: Request):
     query = dict(request.query_params)
-    dff = app.state.df.lazy()
+    dff = app.state.df.clone()
 
     # String filters (case-insensitive)
     if status := query.get("status"):
