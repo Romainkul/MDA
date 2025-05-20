@@ -20,24 +20,34 @@ FROM python:3.11-slim as runtime
 # Install nginx
 USER root
 RUN apt-get update && \
-    apt-get install -y nginx && \
+    apt-get install -y nginx python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
+
 # Prepare nginx cache dirs
+#RUN mkdir -p /var/cache/nginx/client_temp \
+#             /var/cache/nginx/proxy_temp \
+#             /var/log/nginx \
+#             /var/lib/nginx
+#RUN touch  /var/run/nginx.pid 
+
+#RUN chown -R www-data:www-data /var/cache/nginx \
+#                                 /var/log/nginx \
+#                                 /var/run/nginx.pid \
+#                                 /var/lib/nginx
+
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/log/nginx \
-             /var/lib/nginx
-RUN touch  /var/run/nginx.pid 
+             /var/run/nginx \
+             /var/lib/nginx/body && \
+    chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
-RUN chown -R www-data:www-data /var/cache/nginx \
-                                 /var/log/nginx \
-                                 /var/run/nginx.pid \
-                                 /var/lib/nginx
 
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt fastapi starlette uvicorn
-
+RUN python3 -m pip install --no-cache-dir \
+    numpy pandas \
+    -r /tmp/requirements.txt fastapi starlette uvicorn
 # Copy frontend build and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
 COPY --from=backend-builder /app/backend /app/app
