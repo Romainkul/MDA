@@ -13,6 +13,7 @@
 #pkill -F http_server.pid
 #rm http_server.pid
 # Start nginx in foreground
+echo "HF_SDK = $HF_SPACE_SDK, APP_PORT = $APP_PORT, PORT = $PORT"
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
