@@ -15,7 +15,7 @@ COPY backend/ .
 RUN pip install --no-cache-dir gunicorn uvicorn
 
 # Stage 3: runtime image with nginx and run script
-FROM python:3.11-slim
+FROM python:3.11-slim as runtime
 
 # Install nginx
 USER root
@@ -35,33 +35,28 @@ RUN chown -R www-data:www-data /var/cache/nginx \
                                  /var/run/nginx.pid \
                                  /var/lib/nginx
 
-USER pn
-ENV HOME=/home/pn \
-    PATH=/home/pn/.local/bin:$PATH
+COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt fastapi starlette uvicorn
 
-RUN mkdir $HOME/app
-
-WORKDIR $HOME/app
-
-# Copy built frontend
-COPY --from=frontend-builder /app/frontend/dist ./static
-
-# Copy built backend
-COPY --from=backend-builder /app/backend ./app
+# Copy frontend build and backend app
+COPY --from=frontend-builder /app/frontend/dist /app/static
+COPY --from=backend-builder /app/backend /app/app
 
 # Copy nginx config and run script
-#COPY nginx.conf /etc/nginx/nginx.conf
-#COPY run.sh ./run.sh
-#RUN chmod +x run.sh
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY run.sh /app/run.sh
+RUN chmod +x /app/run.sh
 
-# Expose the port nginx listens on
-#EXPOSE 4444
+WORKDIR /app
 
-COPY --chown=pn nginx.conf /etc/nginx/sites-available/default
+# Expose non-privileged port
+EXPOSE 4444
 
-COPY --chown=pn . .
-RUN pip install --no-cache-dir -r backend/requirements.txt
-RUN pip install --no-cache-dir gunicorn uvicorn
+ENTRYPOINT ["/bin/bash", "/app/run.sh"]
+
+#COPY --chown=pn . .
+#RUN pip install --no-cache-dir -r backend/requirements.txt
+#RUN pip install --no-cache-dir gunicorn uvicorn
 # Override entrypoint to use custom run script
-CMD ["bash", "run.sh"]
+#CMD ["bash", "run.sh"]
 
