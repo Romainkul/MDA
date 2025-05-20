@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir gunicorn uvicorn
 
 # Stage 3: final image
 FROM nginx:stable-alpine
+USER root
+RUN mkdir -p /var/cache/nginx/client_temp \
+    && mkdir -p /var/cache/nginx/proxy_temp \
+    && chmod 777 -R /var/cache/nginx
 
 # Copy built frontend static files into nginx www folder
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
