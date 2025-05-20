@@ -1,5 +1,5 @@
 # Web framework
-fastapi==0.115.12
+fastapi[all]==0.115.12
 uvicorn[standard]==0.34.2
 
 # Configuration & validation

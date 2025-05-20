@@ -7,7 +7,7 @@ from pydantic import BaseModel
 try:
     from rag import get_rag_chain, RAGRequest, RAGResponse
 except:
-    from backend.rag import get_rag_chain, RAGRequest, RAGResponse
+    from .rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
 
 import polars as pl
