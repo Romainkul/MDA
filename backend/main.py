@@ -4,8 +4,10 @@ from fastapi import Request
 # Access the global FastAPI app state
 #from fastapi import current_app
 from pydantic import BaseModel
-
-#from rag import get_rag_chain, RAGRequest, RAGResponse
+try:
+    from rag import get_rag_chain, RAGRequest, RAGResponse
+except:
+    from backend.rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
 
 import polars as pl
@@ -78,11 +80,10 @@ def get_filters():
         "countries":     app.state.countries_list
     }
 
-
 @app.get("/api/stats")
 def get_stats(request: Request):
     params = request.query_params
-    lf = app.state.df.lazy()
+    lf = app.state.df
 
     if s := params.get("status"):
         lf = lf.filter(pl.col("_status_lc") == s.lower())
@@ -114,7 +115,7 @@ def get_stats(request: Request):
              "Projects per Year 3": {"labels": years, "values": counts},
               "Projects per Year 4": {"labels": years, "values": counts},
                "Projects per Year 5": {"labels": years, "values": counts},
-                "Projects per Year 6": {"labels": years, "values": counts}, }
+                "Projects per Year 6": {"labels": years, "values": counts}}
 
 
 @app.get("/api/project/{project_id}/organizations")

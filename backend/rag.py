@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Tuple
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from pydantic import BaseSettings, BaseModel
-
+from pydantic import BaseModel #BaseSettings,
+from pydantic_settings import BaseSettings
 from langchain.schema import Document, BaseRetriever
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
