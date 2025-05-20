@@ -11,8 +11,8 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    bucket = "your-bucket-name"
-    path_in_bucket = "your-folder/consolidated_clean.parquet"
+    bucket = "mda_eu_project"
+    path_in_bucket = "data/consolidated_clean.parquet"
     gcs_path = f"gs://{bucket}/{path_in_bucket}"
 
     fs = gcsfs.GCSFileSystem()  
