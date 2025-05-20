@@ -22,7 +22,8 @@ FROM python:3.11-slim as runtime
 USER root
 RUN apt-get update && \
     apt-get install -y nginx python3-pip && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* &&\
+    rm -f /etc/nginx/sites-enabled/default 
 
 # Create nginx temp dirs with correct permissions
 #RUN mkdir -p /var/cache/nginx/client_temp \
@@ -57,8 +58,7 @@ RUN mkdir -p /var/cache/nginx/client_temp \
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt \
- && python3 -m pip install --no-cache-dir fastapi starlette uvicorn \
- && python3 -m pip install --no-cache-dir --force-reinstall numpy
+ && python3 -m pip install --no-cache-dir fastapi starlette uvicorn
 
 # Copy frontend build and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
