@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
 # Access the global FastAPI app state
-from fastapi import current_app
+#from fastapi import current_app
 from pydantic import BaseModel
 
 from rag import get_rag_chain, RAGRequest, RAGResponse
@@ -145,11 +145,11 @@ def get_project_organizations(project_id: str):
     print(orgs_df)
     return orgs_df.to_dicts()
 
-def rag_chain_depender():
+"""def rag_chain_depender():
     """
-    Dependency injector for the RAG chain stored in app.state.
-    Raises HTTPException if not initialized.
-    """
+#Dependency injector for the RAG chain stored in app.state.
+#Raises HTTPException if not initialized.
+"""
     chain = current_app.state.rag_chain
     if chain is None:
         raise HTTPException(status_code=500, detail="RAG chain not initialized")
@@ -161,8 +161,8 @@ async def ask_rag(
     rag_chain = Depends(rag_chain_depender)
 ):
     """
-    Handle a RAG query. Uses session memory and the provided RAG chain.
-    """
+#Handle a RAG query. Uses session memory and the provided RAG chain.
+"""
     # Invoke the chain with the named input
     result = await rag_chain.ainvoke({"question": req.query})
-    return RAGResponse(answer=result["answer"])
+    return RAGResponse(answer=result["answer"])"""
