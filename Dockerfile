@@ -40,7 +40,8 @@ RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/log/nginx \
              /var/run/nginx \
-             /var/lib/nginx/body && \
+             /var/lib/nginx/body \
+             /var/lib/nginx/proxy && \
     chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
 
