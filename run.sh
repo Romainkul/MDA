@@ -1,7 +1,7 @@
 #!/bin/bash
 # Start nginx directly
-service nginx start &
-NGINX_PID=$!
+#service nginx start &
+#NGINX_PID=$!
 #nginx -g "daemon off;" &
 # Wait briefly to ensure nginx is up
 #sleep 1
@@ -13,8 +13,8 @@ NGINX_PID=$!
 #pkill -F http_server.pid
 #rm http_server.pid
 # Start nginx in foreground
-#nginx -g "daemon off;" &
-#NGINX_PID=$!
+nginx -g "daemon off;" &
+NGINX_PID=$!
 
 # Serve static files via simple HTTP server on port 8000
 env HTTP_SERVER_PORT=8000
