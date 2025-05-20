@@ -1,5 +1,11 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
+# Access the global FastAPI app state
+from fastapi import current_app
+from pydantic import BaseModel
+
+from rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
 
 import polars as pl
@@ -103,7 +109,12 @@ def get_stats(request: Request):
           .collect()
     )
     years, counts = grouped["year"].to_list(), grouped["count"].to_list()
-    return {"Projects per Year": {"labels": years, "values": counts}}
+    return {"Projects per Year": {"labels": years, "values": counts},
+            "Projects per Year 2": {"labels": years, "values": counts},
+             "Projects per Year 3": {"labels": years, "values": counts},
+              "Projects per Year 4": {"labels": years, "values": counts},
+               "Projects per Year 5": {"labels": years, "values": counts},
+                "Projects per Year 6": {"labels": years, "values": counts}, }
 
 
 @app.get("/api/project/{project_id}/organizations")
@@ -131,5 +142,27 @@ def get_project_organizations(project_id: str):
         .filter(pl.col("name").is_not_null())
         .select(["name","country","latitude","longitude"])
     )
-
+    print(orgs_df)
     return orgs_df.to_dicts()
+
+def rag_chain_depender():
+    """
+    Dependency injector for the RAG chain stored in app.state.
+    Raises HTTPException if not initialized.
+    """
+    chain = current_app.state.rag_chain
+    if chain is None:
+        raise HTTPException(status_code=500, detail="RAG chain not initialized")
+    return chain
+
+@app.post("/rag", response_model=RAGResponse)
+async def ask_rag(
+    req: RAGRequest,
+    rag_chain = Depends(rag_chain_depender)
+):
+    """
+    Handle a RAG query. Uses session memory and the provided RAG chain.
+    """
+    # Invoke the chain with the named input
+    result = await rag_chain.ainvoke({"question": req.query})
+    return RAGResponse(answer=result["answer"])

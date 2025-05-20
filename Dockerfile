@@ -41,22 +41,6 @@ RUN mkdir -p \
       /var/lib/nginx/uwsgi \
  && chmod -R a+rwx /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
-
-# Create nginx temp dirs with correct permissions
-#RUN mkdir -p /var/cache/nginx/client_temp \
-#             /var/cache/nginx/proxy_temp \
-#             /var/cache/nginx/fastcgi_temp \
-#             /var/cache/nginx/scgi_temp \
-#             /var/cache/nginx/uwsgi_temp \
-#             /var/log/nginx \
-#             /var/run/nginx \
-#             /var/lib/nginx/body \
-#             /var/lib/nginx/proxy \
-#             /var/lib/nginx/fastcgi \
-#             /var/lib/nginx/scgi \
-#             /var/lib/nginx/uwsgi && \
-#    chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
-
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/cache/nginx/fastcgi_temp \
@@ -89,15 +73,6 @@ RUN chmod -R a+rwx /var/log/nginx
 
 WORKDIR /app
 
-# Expose non-privileged port
-#EXPOSE 4444
-
 # Use run.sh as entrypoint (runs nginx, static server, uvicorn)
 ENTRYPOINT ["/bin/bash", "/app/run.sh"]
-
-#COPY --chown=pn . .
-#RUN pip install --no-cache-dir -r backend/requirements.txt
-#RUN pip install --no-cache-dir gunicorn uvicorn
-# Override entrypoint to use custom run script
-#CMD ["bash", "run.sh"]
 
