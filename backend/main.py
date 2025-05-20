@@ -7,32 +7,30 @@ from pathlib import Path
 import os
 import polars as pl
 import gcsfs
+from contextlib import asynccontextmanager
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bucket = "your-bucket-name"
+    path_in_bucket = "your-folder/consolidated_clean.parquet"
+    gcs_path = f"gs://{bucket}/{path_in_bucket}"
 
-app = FastAPI()
+    fs = gcsfs.GCSFileSystem()  
+    app.state.df = pl.read_parquet(
+        gcs_path,
+        storage_options={"gcs": fs}
+    )
+
+    yield
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-#DATA_PATH = os.getenv("PARQUET_PATH", "data/consolidated_clean.parquet")
-#full_path = Path(__file__).parent / DATA_PATH
-
-#if not full_path.exists():
-#    raise RuntimeError(f"Data file not found at {full_path}")
-
-
-# Create a GCS filesystem (uses GOOGLE_APPLICATION_CREDENTIALS under the hood)
-fs = gcsfs.GCSFileSystem()
-
-# This will stream-read in parallel and decode with Polars' built-in threads
-df = pl.read_parquet(
-    "mda_eu_project/data/consolidated_clean.parquet",
-    storage_options={"gcs": fs}
-)
 
 
 @app.get("/api/projects")
 def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str = ""):
     start = page * limit
-    df_filt = df.clone()
+    df_filt = app.state.df
 
     if search:
         df_filt = df_filt.filter(pl.col("title").str.to_lowercase().str.contains(search.lower()))
@@ -51,7 +49,7 @@ def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str =
 
 @app.get("/api/filters")
 def get_filters(status: str = "", organization: str = "", country: str = "", legalBasis: str = ""):
-    dff = df.clone()
+    dff = app.state.df.lazy()
 
     if status:
         dff = dff.filter(pl.col("status").str.to_lowercase() == status.lower())
@@ -81,7 +79,7 @@ def get_filters(status: str = "", organization: str = "", country: str = "", leg
 @app.get("/api/stats")
 def get_stats(request: Request):
     query = dict(request.query_params)
-    dff = df.lazy()
+    dff = app.state.df.lazy()
 
     # String filters (case-insensitive)
     if status := query.get("status"):
@@ -151,7 +149,7 @@ def get_stats(request: Request):
 @app.get("/api/project/{project_id}/organizations")
 def get_project_organizations(project_id: str):
     try:
-        dff = df.filter(pl.col("id") == project_id)
+        dff = app.state.df.filter(pl.col("id") == project_id)
 
         if dff.height == 0:
             raise HTTPException(status_code=404, detail="Project not found")
