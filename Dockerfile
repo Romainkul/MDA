@@ -90,7 +90,7 @@ RUN chmod -R a+rwx /var/log/nginx
 WORKDIR /app
 
 # Expose non-privileged port
-EXPOSE 4444
+#EXPOSE 4444
 
 # Use run.sh as entrypoint (runs nginx, static server, uvicorn)
 ENTRYPOINT ["/bin/bash", "/app/run.sh"]
