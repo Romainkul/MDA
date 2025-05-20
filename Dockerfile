@@ -27,14 +27,21 @@ RUN apt-get update && \
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/log/nginx \
-             /var/run/nginx.pid \
-             /var/lib/nginx && \
-    chown -R www-data:www-data /var/cache/nginx \
+             /var/lib/nginx && 
+RUN touch  /var/run/nginx.pid 
+
+RUN chown -R www-data:www-data /var/cache/nginx \
                                  /var/log/nginx \
                                  /var/run/nginx.pid \
                                  /var/lib/nginx
 
-WORKDIR /home/pn/app
+USER pn
+ENV HOME=/home/pn \
+    PATH=/home/pn/.local/bin:$PATH
+
+RUN mkdir $HOME/app
+
+WORKDIR $HOME/app
 
 # Copy built frontend
 COPY --from=frontend-builder /app/frontend/dist ./static
@@ -43,12 +50,16 @@ COPY --from=frontend-builder /app/frontend/dist ./static
 COPY --from=backend-builder /app/backend ./app
 
 # Copy nginx config and run script
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY run.sh ./run.sh
-RUN chmod +x run.sh
+#COPY nginx.conf /etc/nginx/nginx.conf
+#COPY run.sh ./run.sh
+#RUN chmod +x run.sh
 
 # Expose the port nginx listens on
-EXPOSE 4444
+#EXPOSE 4444
+
+COPY --chown=pn nginx.conf /etc/nginx/sites-available/default
+
+COPY --chown=pn . .
 
 # Override entrypoint to use custom run script
 CMD ["bash", "run.sh"]

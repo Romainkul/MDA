@@ -1,8 +1,9 @@
 #!/bin/bash
 # Start nginx directly
-nginx -g "daemon off;" &
+service nginx start
+#nginx -g "daemon off;" &
 # Wait briefly to ensure nginx is up
-sleep 1
+#sleep 1
 # Serve static build
 python -m http.server --directory ./static --bind 0.0.0.0 8000 & echo $! > http_server.pid
 # Start FastAPI
