@@ -9,13 +9,74 @@ import os
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-DATA_PATH = os.getenv("PARQUET_PATH", "data/consolidated_clean.parquet")
-full_path = Path(__file__).parent / DATA_PATH
+#DATA_PATH = os.getenv("PARQUET_PATH", "data/consolidated_clean.parquet")
+#full_path = Path(__file__).parent / DATA_PATH
 
 #if not full_path.exists():
 #    raise RuntimeError(f"Data file not found at {full_path}")
 
-df = pl.read_parquet(str(full_path))
+#df = pl.read_parquet(str(full_path))
+import polars as pl
+from datetime import date
+
+# -- fake data for three projects --
+df = pl.DataFrame({
+    "id": ["P1", "P2", "P3"],
+    "title": [
+        "Alpha Study of Europe",
+        "Beta Project on Robotics",
+        "Gamma Research Initiative"
+    ],
+    "status": ["Active", "Closed", "Active"],
+    "startDate": [
+        date(2020, 1, 15),
+        date(2021, 6, 1),
+        date(2019, 9, 30)
+    ],
+    "endDate": [
+        date(2022, 1, 14),
+        date(2022, 12, 31),
+        date(2020, 9, 29)
+    ],
+    "ecMaxContribution": [1_000_000, 500_000, 750_000],
+    "acronym": ["ALPHA", "BETA", "GAMMA"],
+    "legalBasis": ["H2020", "ERC", "H2020"],
+    "objective": [
+        "Investigate European climate patterns",
+        "Develop next-gen robots",
+        "Advance materials science"
+    ],
+    "frameworkProgramme": ["FP8", "FP9", "FP8"],
+    # these two must be lists of strings
+    "list_euroSciVocTitle": [
+        ["Climate", "Environment"],
+        ["Robotics"],
+        ["Materials", "Nanotech"]
+    ],
+    "list_euroSciVocPath": [
+        ["http://eurovoc.europa.eu/1000", "http://eurovoc.europa.eu/2000"],
+        ["http://eurovoc.europa.eu/3000"],
+        ["http://eurovoc.europa.eu/4000", "http://eurovoc.europa.eu/5000"]
+    ],
+    # used by the /api/filters and /api/project/{id}/organizations endpoints:
+    "list_name": [
+        ["Univ of Brussels", "CNRS"],
+        ["Fraunhofer"],
+        ["TU Delft"]
+    ],
+    "list_country": [
+        ["BE", "FR"],
+        ["DE"],
+        ["NL"]
+    ],
+    # "lat,lon" strings for each organization
+    "list_geolocation": [
+        ["50.85,4.35", "46.20,6.15"],
+        ["52.52,13.40"],
+        ["52.37,4.90"]
+    ]
+})
+
 
 @app.get("/api/projects")
 def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str = ""):
