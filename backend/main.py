@@ -4,10 +4,10 @@ from fastapi import Request
 # Access the global FastAPI app state
 #from fastapi import current_app
 from pydantic import BaseModel
-try:
-    from rag import get_rag_chain, RAGRequest, RAGResponse
-except:
-    from .rag import get_rag_chain, RAGRequest, RAGResponse
+#try:
+#    from rag import get_rag_chain, RAGRequest, RAGResponse
+#except:
+#    from .rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
 
 import polars as pl
