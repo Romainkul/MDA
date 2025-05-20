@@ -26,6 +26,6 @@ faiss-cpu==1.7.4
 whoosh==2.7.4
 
 # Transformers
-transformers==4.35.0
+transformers==4.39.0
 torch==2.0.1
 
