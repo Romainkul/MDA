@@ -83,7 +83,7 @@ def get_filters():
 @app.get("/api/stats")
 def get_stats(request: Request):
     params = request.query_params
-    lf = app.state.df
+    lf = app.state.df.lazy()
 
     if s := params.get("status"):
         lf = lf.filter(pl.col("_status_lc") == s.lower())
@@ -104,7 +104,7 @@ def get_stats(request: Request):
 
     grouped = (
         lf.select(pl.col("startDate").dt.year().alias("year"))
-          .groupby("year")
+          .group_by("year")
           .agg(pl.count().alias("count"))
           .sort("year")
           .collect()
