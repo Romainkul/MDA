@@ -17,7 +17,7 @@ google-cloud-storage==2.11.0
 pytorch-lightning==2.0.2           
 langchain==0.0.283                  
 langchain-huggingface==0.2.0        
-sentence-transformers==2.2.2        
+sentence-transformers==2.6.0        
 
 # Vector store
 faiss-cpu==1.7.4
