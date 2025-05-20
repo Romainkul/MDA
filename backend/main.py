@@ -6,18 +6,24 @@ import datetime
 from pathlib import Path
 import os
 import polars as pl
-from google.cloud import storage
+import gcsfs
 import os
 import io
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    bucket_name = "mda_eu_project"
-    source_blob_name = "data/consolidated_clean.parquet"
-    storage_client = storage.Client()
-    data = storage_client.bucket(bucket_name).blob(source_blob_name).download_as_bytes()
-    app.state.df = pl.read_parquet(io.BytesIO(data))
+    bucket = "mda_eu_project"
+    path   = "data/consolidated_clean.parquet"
+    uri    = f"gs://{bucket}/{path}"
+
+    # Create a gcsfs filesystem (will use GOOGLE_APPLICATION_CREDENTIALS)
+    fs = gcsfs.GCSFileSystem()
+
+    # Eager load into memory:
+    with fs.open(uri, "rb") as f:
+        app.state.df = pl.read_parquet(f)
+
     yield
 
 app = FastAPI(lifespan=lifespan)

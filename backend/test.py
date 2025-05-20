@@ -15,8 +15,7 @@ uri    = f"gs://{bucket}/{path}"
 fs = gcsfs.GCSFileSystem()
 
 # Eager load into memory:
-df = pl.read_parquet(
-    uri,
-    storage_options={"gcs": fs}
-)
+with fs.open(uri, "rb") as f:
+    df = pl.read_parquet(f)
+
 print(df.head())
