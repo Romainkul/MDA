@@ -45,15 +45,16 @@ RUN mkdir -p /var/cache/nginx/client_temp \
 
 
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --no-cache-dir \
-    numpy pandas \
-    -r /tmp/requirements.txt fastapi starlette uvicorn
-# Copy frontend build and backend app
+# Install backend dependencies (FastAPI, Uvicorn) and use requirements.txt for numpy/pandas versions
+RUN python3 -m pip install --no-cache-dir fastapi starlette uvicorn && \
+    python3 -m pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Copy frontend build and backend app and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
 COPY --from=backend-builder /app/backend /app/app
 
 # Copy nginx config and run script
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 
@@ -62,7 +63,7 @@ WORKDIR /app
 # Expose non-privileged port
 EXPOSE 4444
 
-CMD ["bash", "run.sh"]
+ENTRYPOINT ["bash", "run.sh"]
 
 #COPY --chown=pn . .
 #RUN pip install --no-cache-dir -r backend/requirements.txt
