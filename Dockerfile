@@ -25,6 +25,20 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create nginx temp dirs with correct permissions
+#RUN mkdir -p /var/cache/nginx/client_temp \
+#             /var/cache/nginx/proxy_temp \
+#             /var/cache/nginx/fastcgi_temp \
+#             /var/cache/nginx/scgi_temp \
+#             /var/cache/nginx/uwsgi_temp \
+#             /var/log/nginx \
+#             /var/run/nginx \
+#             /var/lib/nginx/body \
+#             /var/lib/nginx/proxy \
+#             /var/lib/nginx/fastcgi \
+#             /var/lib/nginx/scgi \
+#             /var/lib/nginx/uwsgi && \
+#    chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
+
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
              /var/cache/nginx/fastcgi_temp \
@@ -37,7 +51,9 @@ RUN mkdir -p /var/cache/nginx/client_temp \
              /var/lib/nginx/fastcgi \
              /var/lib/nginx/scgi \
              /var/lib/nginx/uwsgi && \
-    chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
+    touch /var/log/nginx/error.log /var/log/nginx/access.log && \
+    chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
+
 
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
