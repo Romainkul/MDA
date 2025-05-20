@@ -14,18 +14,18 @@ gcsfs==2024.12.0
 google-cloud-storage==2.11.0
 
 # RAG & embeddings
-pytorch-lightning==2.0.2           
-langchain==0.0.283                  
+pytorch-lightning==2.5.1           
+langchain==0.3.25                 
 langchain-huggingface==0.2.0        
-sentence-transformers==2.6.0        
+sentence-transformers==4.1.0      
 
 # Vector store
-faiss-cpu==1.7.4
+faiss-cpu==1.11.0
 
 # Search index
 whoosh==2.7.4
 
 # Transformers
-transformers==4.39.0
-torch==2.0.1
+transformers==4.51.3
+torch==2.6.0
 
