@@ -14,7 +14,9 @@
 #rm http_server.pid
 # Start nginx in foreground
 echo "HF_SDK = $HF_SPACE_SDK, APP_PORT = $APP_PORT, PORT = $PORT"
-echo "$GCP_SA_JSON" > /app/sa.json
+echo "$GCP_SA_JSON" > /tmp/sa.json
+chmod 600 /tmp/sa.json
+
 export GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json
 nginx -g "daemon off;" &
 NGINX_PID=$!
