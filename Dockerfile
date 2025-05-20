@@ -18,39 +18,33 @@ RUN pip install --no-cache-dir gunicorn uvicorn
 FROM python:3.11-slim as runtime
 
 # Install nginx
+# Install OS deps
 USER root
 RUN apt-get update && \
     apt-get install -y nginx python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
-
-# Prepare nginx cache dirs
-#RUN mkdir -p /var/cache/nginx/client_temp \
-#             /var/cache/nginx/proxy_temp \
-#             /var/log/nginx \
-#             /var/lib/nginx
-#RUN touch  /var/run/nginx.pid 
-
-#RUN chown -R www-data:www-data /var/cache/nginx \
-#                                 /var/log/nginx \
-#                                 /var/run/nginx.pid \
-#                                 /var/lib/nginx
-
+# Create nginx temp dirs with correct permissions
 RUN mkdir -p /var/cache/nginx/client_temp \
              /var/cache/nginx/proxy_temp \
+             /var/cache/nginx/fastcgi_temp \
+             /var/cache/nginx/scgi_temp \
+             /var/cache/nginx/uwsgi_temp \
              /var/log/nginx \
              /var/run/nginx \
              /var/lib/nginx/body \
-             /var/lib/nginx/proxy && \
+             /var/lib/nginx/proxy \
+             /var/lib/nginx/fastcgi \
+             /var/lib/nginx/scgi \
+             /var/lib/nginx/uwsgi && \
     chmod -R 755 /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
-
+# Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
-# Install backend dependencies (FastAPI, Uvicorn) and use requirements.txt for numpy/pandas versions
-RUN python3 -m pip install --no-cache-dir fastapi starlette uvicorn && \
-    python3 -m pip install --no-cache-dir -r /tmp/requirements.txt
+RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt && \
+    python3 -m pip install --no-cache-dir fastapi starlette uvicorn
 
-# Copy frontend build and backend app and backend app
+# Copy frontend build and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
 COPY --from=backend-builder /app/backend /app/app
 
@@ -64,7 +58,8 @@ WORKDIR /app
 # Expose non-privileged port
 EXPOSE 4444
 
-ENTRYPOINT ["bash", "run.sh"]
+# Use run.sh as entrypoint (runs nginx, static server, uvicorn)
+ENTRYPOINT ["/bin/bash", "/app/run.sh"]
 
 #COPY --chown=pn . .
 #RUN pip install --no-cache-dir -r backend/requirements.txt
