@@ -23,7 +23,9 @@ USER root
 RUN apt-get update && \
     apt-get install -y nginx python3-pip && \
     rm -rf /var/lib/apt/lists/* &&\
-    rm -f /etc/nginx/sites-enabled/default 
+    rm -f /etc/nginx/sites-enabled/default \
+   && rm -f /etc/nginx/conf.d/default.conf
+
 
 # Create nginx temp dirs with correct permissions
 #RUN mkdir -p /var/cache/nginx/client_temp \
@@ -65,7 +67,7 @@ COPY --from=frontend-builder /app/frontend/dist /app/static
 COPY --from=backend-builder /app/backend /app/app
 
 # Copy nginx config and run script
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 COPY run.sh /app/run.sh
 RUN chmod +x /app/run.sh
 RUN chmod -R a+rwx /var/log/nginx
