@@ -30,8 +30,8 @@ COPY --from=backend-builder /app/backend /app/backend
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80
-EXPOSE 80
+# Expose port 8080
+EXPOSE 8080
 
 # Start Nginx. Gunicorn/Uvicorn will be spawned by nginx via upstream.
 CMD ["nginx", "-g", "daemon off;"]
