@@ -51,7 +51,7 @@ COPY --from=backend-builder /app/backend /app/app
 # Copy nginx config and run script
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY run.sh /app/run.sh
-RUN chmod +x /app/run.sh
+#RUN chmod +x /app/run.sh
 
 WORKDIR /app
 
@@ -59,7 +59,7 @@ WORKDIR /app
 EXPOSE 4444
 
 # Use run.sh as entrypoint (runs nginx, static server, uvicorn)
-ENTRYPOINT ["/bin/bash", "/app/run.sh"]
+CMD ["bash", "/app/run.sh"]
 
 #COPY --chown=pn . .
 #RUN pip install --no-cache-dir -r backend/requirements.txt
