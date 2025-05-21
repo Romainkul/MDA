@@ -123,18 +123,18 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
           </ChakraSelect>
         </Flex>
 
-        <Box bg="gray.50" p={4} borderRadius="md" height="400px" overflowY="auto">
+        <Box bg="gray.50" p={4} borderRadius="md" height="500px" overflowY="auto">
           {!projects.length ? (
             <Flex justify="center" py={10}><Spinner /></Flex>
           ) : (
             <Table variant="simple" size="sm" width="100%">
               <Thead>
                 <Tr>
-                  <Th width="50%">Title</Th>
-                  <Th width="15%">Status</Th>
-                  <Th width="10%">ID</Th>
-                  <Th width="15%">Start Date</Th>
-                  <Th width="15%">Funding €</Th>
+                <Th width="60%" whiteSpace="nowrap">Title</Th>
+                <Th width="10%" whiteSpace="nowrap">Status</Th>
+                <Th width="10%" whiteSpace="nowrap">ID</Th>
+                <Th width="10%" whiteSpace="nowrap">Start Date</Th>
+                <Th width="10%" whiteSpace="nowrap">Funding €</Th>
                 </Tr>
               </Thead>
               <Tbody>
