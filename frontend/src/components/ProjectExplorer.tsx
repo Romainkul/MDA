@@ -130,11 +130,11 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             <Table variant="simple" size="sm" width="100%">
               <Thead>
                 <Tr>
-                  <Th width="60%">Title</Th>
-                  <Th>Status</Th>
-                  <Th>ID</Th>
-                  <Th>Start Date</Th>
-                  <Th>Funding €</Th>
+                  <Th width="50%">Title</Th>
+                  <Th width="15%">Status</Th>
+                  <Th width="10%">ID</Th>
+                  <Th width="15%">Start Date</Th>
+                  <Th width="15%">Funding €</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -148,7 +148,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     <Td isTruncated>{p.title}</Td>
                     <Td>{p.status}</Td>
                     <Td>{p.id}</Td>
-                    <Td whiteSpace="nowrap">{p.startDate}</Td>
+                    <Td whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0, 10)}</Td>
                     <Td>{p.ecMaxContribution.toLocaleString()}</Td>
                   </Tr>
                 ))}
