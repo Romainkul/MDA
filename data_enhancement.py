@@ -1,10 +1,24 @@
-import csv
-import re
-import polars as pl
-from __future__ import annotations
-import re, csv, pathlib, polars as pl
+"""
+CORDIS Data Cleaning and Consolidation Script
 
-ROOT      = pathlib.Path(r"C:\Users\Romain\OneDrive - KU Leuven\Masters\MBIS\Year 2\Semester 2\Modern Data Analytics\CORDIS")
+- Cleans "dirty" CORDIS CSVs with misaligned columns due to text fields.
+- Type-coerces and merges per-dataset data across all available programme folders.
+- Aggregates project-related data into a single consolidated Parquet file.
+"""
+
+import re
+import csv
+import pathlib
+import polars as pl
+
+# ==== PATHS AND DATASET CONFIGURATION ========================================
+
+ROOT = pathlib.Path(
+    r"C:\Users\Romain\OneDrive - KU Leuven\Masters\MBIS\Year 2\Semester 2\Modern Data Analytics\CORDIS"
+)
+OUTDIR = ROOT / "combined"
+OUTDIR.mkdir(exist_ok=True)
+
 DATASETS = [
     "project",
     "projectDeliverables",
@@ -17,65 +31,41 @@ DATASETS = [
     "webLink",
     "legalBasis",
 ]
-OUTDIR    = ROOT / "combined"
-OUTDIR.mkdir(exist_ok=True)
 
-###############################################################################
-# 2.  Generic cleaner –– parameterised version of the loop you wrote
-###############################################################################
+# ==== REGEX FOR CLEANING =====================================================
+
 _PROJECT_ID_RE = re.compile(r"^(?:19|20)\d{2}")
-_GENERIC_NUM_RE  = re.compile(r"\d{4}")
+_GENERIC_NUM_RE = re.compile(r"\d{4}")
 
-import csv, pathlib, polars as pl, re
+# ==== CLEANING FUNCTION ======================================================
 
-import csv, re, pathlib
-import polars as pl                       #  >=0.20
-
-import csv, pathlib, re
-import polars as pl                       # ≥ 0.20
-
-
-def _clean_one_file(csv_path: pathlib.Path,
-                    number_regex: re.Pattern[str], dataset: str) -> pl.DataFrame:
+def _clean_one_file(csv_path: pathlib.Path, number_regex: re.Pattern, dataset: str) -> pl.DataFrame:
     """
-    Clean a CORDIS CSV whose long *objective* field sometimes explodes into
-    extra columns because of stray quotes / semicolons.
+    Cleans a CORDIS CSV file, handling column misalignment due to unescaped semicolons.
 
-    Strategy
-    --------
-    * A well-formed row has 21 semicolon-separated columns.
-    * If we get more than 21 columns we treat columns 16 … -4 as belonging
-      to *objective* and stitch them back together with a semicolon.
-    * The last three columns are   contentUpdateDate | rcn | grantDoi.
+    Args:
+        csv_path: Path to input CSV file.
+        number_regex: Regex to clean numeric fields.
+        dataset: Name of the dataset ("project", "organization", etc.)
+
+    Returns:
+        Cleaned Polars DataFrame.
     """
-    # ---------- constants --------------------------------------------------
-    if dataset=="project":
-        EXPECTED_COLS   = 20          # final width
-        TITLE_COL       = 3           # 0-based index of *title*
-        DATE1_COL       = 4           # 0-based index of startDate
-        DATE2_COL       = 5           # 0-based index of endDate
-        OBJECTIVE_COL   = 16          # 0-based index of objective
-        TRAILING_KEEP   = 3           # last three fixed columns
-    elif dataset=="organization":
-        EXPECTED_COLS   = 25          # final width
-        TITLE_COL       = 3           # 0-based index of *title*
-        DATE1_COL       = 4           # 0-based index of startDate
-        DATE2_COL       = 5           # 0-based index of endDate
-        OBJECTIVE_COL   = 4           # 0-based index of objective
-        TRAILING_KEEP   = 20           # last three fixed columns
-    else:
-        EXPECTED_COLS   = 20          # final width
-        TITLE_COL       = 3           # 0-based index of *title*
-        DATE1_COL       = 4           # 0-based index of startDate
-        DATE2_COL       = 5           # 0-based index of endDate
-        OBJECTIVE_COL   = 16          # 0-based index of objective
-        TRAILING_KEEP   = 3           # last three fixed columns
 
+    # Dataset-specific expected column settings
+    dataset_settings = {
+        "project":        dict(EXPECTED_COLS=20, OBJECTIVE_COL=16, TRAILING_KEEP=3),
+        "organization":   dict(EXPECTED_COLS=25, OBJECTIVE_COL=4,  TRAILING_KEEP=20),
+    }
+    DEFAULT_SETTINGS = dict(EXPECTED_COLS=20, OBJECTIVE_COL=16, TRAILING_KEEP=3)
+    settings = dataset_settings.get(dataset, DEFAULT_SETTINGS)
 
+    EXPECTED_COLS = settings["EXPECTED_COLS"]
+    OBJECTIVE_COL = settings["OBJECTIVE_COL"]
+    TRAILING_KEEP = settings["TRAILING_KEEP"]
 
-    date_rx   = re.compile(r"\d{4}-\d{2}-\d{2}$")
-    is_date   = lambda s: (s == "") or bool(date_rx.match(s))
-
+    date_rx = re.compile(r"\d{4}-\d{2}-\d{2}$")
+    is_date = lambda s: (s == "") or bool(date_rx.match(s))
     tmp_clean = csv_path.with_suffix(".cleaned.csv")
 
     with csv_path.open(encoding="utf-8", newline="") as fin, \
@@ -89,64 +79,57 @@ def _clean_one_file(csv_path: pathlib.Path,
             lineterminator="\n",
         )
 
-        # ---------- iterate raw lines -------------------------------------
         for raw in fin:
-            #print(raw)
             raw = raw.rstrip("\n")
-            #print(raw)
-            cells = raw.split(";")                     # blind split
+            cells = raw.split(";")  # Naive split
 
-            # ---- 1️⃣  repair *title* if dates are not where they belong --
-            if (len(cells) > EXPECTED_COLS) and  (not is_date(cells[DATE1_COL]) or not is_date(cells[DATE2_COL])) and dataset=="project":
-                # look for the first position where *two successive* cells
-                # are both valid dates / nulls
-                i = DATE1_COL
+            # Step 1: Repair "title" overflow due to misaligned dates (for "project" only)
+            if (
+                dataset == "project" and len(cells) > EXPECTED_COLS
+                and (not is_date(cells[4]) or not is_date(cells[5]))
+            ):
+                i = 4
                 while i + 1 < len(cells):
                     if is_date(cells[i]) and is_date(cells[i + 1]):
                         break
                     i += 1
                 else:
-                    # cannot find a valid date pair → give up on this line
-                    continue
+                    continue  # Skip if not fixable
 
-                head   = cells[:TITLE_COL]             # 0 … 2
-                title  = ";".join(cells[TITLE_COL:i])  # glue spill-over
-                cells  = head + [title] + cells[i:]    # rebuild the row
-            # ---- 2️⃣  repair *objective* overflow ------------------------
-            if len(cells) > EXPECTED_COLS and (dataset=="project" or  dataset=="organization"):
+                head = cells[:3]
+                title = ";".join(cells[3:i])
+                cells = head + [title] + cells[i:]
+
+            # Step 2: Repair "objective" overflow (for project/organization)
+            if len(cells) > EXPECTED_COLS and dataset in ("project", "organization"):
                 head = cells[:OBJECTIVE_COL]
                 tail = cells[-TRAILING_KEEP:]
-                obj  = ";".join(cells[OBJECTIVE_COL:-TRAILING_KEEP])
+                obj = ";".join(cells[OBJECTIVE_COL:-TRAILING_KEEP])
                 cells = head + [obj] + tail
-                #print("here 2")
 
-            # ---- 3️⃣  pad short rows, skip malformed ---------------------
-            if len(cells) < EXPECTED_COLS and (dataset=="project" or  dataset=="organization"):
+            # Step 3: Pad short rows, skip if still malformed
+            if len(cells) < EXPECTED_COLS and dataset in ("project", "organization"):
                 cells.extend([""] * (EXPECTED_COLS - len(cells)))
-                #print("here again")
-
-            if len(cells) != EXPECTED_COLS and (dataset=="project" or  dataset=="organization"):            # still wrong → skip
-                #print(cells)
+            if len(cells) != EXPECTED_COLS and dataset in ("project", "organization"):
                 continue
 
-            # ---- 4️⃣  cell-level clean-ups -------------------------------
-            cleaned: list[str] = []
+            # Step 4: Cell-level cleaning
+            cleaned = []
             for cell in cells:
-
+                cell = cell.strip('"')
                 if cell in ('""', ""):
                     cell = ""
                 else:
-                    cell = (cell.replace("\t", " ")
-                                 .replace('"""', '"')
-                                 .strip())
+                    cell = cell.replace("\t", " ").replace('"""', '"').strip()
                     if number_regex.fullmatch(cell):
                         cell = cell.lstrip("0") or "0"
-                cleaned.append(cell.strip('"'))
-            cleaned[-1]=cleaned[-1].replace('"','').replace(',','')
-            cleaned[0]=cleaned[0].replace('"','')
+                cleaned.append(cell)
+            if cleaned:
+                cleaned[-1] = cleaned[-1].replace('"', '').replace(',', '')
+                cleaned[0] = cleaned[0].replace('"', '')
             writer.writerow(cleaned)
 
-    # ---------- read into Polars (all Utf8) -------------------------------
+    # Read cleaned file with Polars
     return pl.read_csv(
         tmp_clean,
         separator="|",
@@ -157,13 +140,16 @@ def _clean_one_file(csv_path: pathlib.Path,
         truncate_ragged_lines=True,
     )
 
+# ==== COMBINING AND TYPE CASTING ACROSS PROGRAMMES ===========================
 
 def combine_all_programmes() -> None:
-    from pathlib import Path
+    """
+    Combines and cleans each CORDIS dataset across all available programmes,
+    and writes a single Parquet file per dataset.
+    """
     for dataset in DATASETS:
-        combined: list[pl.DataFrame] = []
-
-        for i,programme_dir in enumerate(ROOT.iterdir()):
+        combined = []
+        for programme_dir in ROOT.iterdir():
             if not programme_dir.is_dir():
                 continue
             csv_file = programme_dir / f"{dataset}.csv"
@@ -171,14 +157,13 @@ def combine_all_programmes() -> None:
                 continue
 
             regex = _PROJECT_ID_RE if dataset == "project" else _GENERIC_NUM_RE
-            df    = _clean_one_file(csv_file, regex, dataset)
-            print(programme_dir)
-            # ---------- type coercions matching your original code ----------
+            df = _clean_one_file(csv_file, regex, dataset)
+
+            # Type coercions (dataset-specific)
             if dataset == "project":
                 df = (
-                    df
-                    .with_columns([
-                        pl.col("id"),#.cast(pl.Int64),
+                    df.with_columns([
+                        pl.col("id"),
                         pl.col("acronym").cast(pl.Utf8, strict=False).str.strip_chars('"'),
                         pl.col("status").cast(pl.Utf8, strict=False).str.strip_chars('"'),
                         pl.col("title").cast(pl.Utf8, strict=False).str.strip_chars('"'),
@@ -191,8 +176,8 @@ def combine_all_programmes() -> None:
                         pl.col("nature").cast(pl.Utf8, strict=False).str.strip_chars('"'),
                         pl.col("objective").cast(pl.Utf8, strict=False).str.strip_chars('"'),
                         pl.col("grantDoi").cast(pl.Utf8, strict=False).str.strip_chars('"'),
-                        pl.col("totalCost").cast(pl.Utf8, strict=False).str.strip_chars('"').str.replace_all('"','').str.replace(",",".").cast(pl.Float64),
-                        pl.col("ecMaxContribution").cast(pl.Utf8, strict=False).str.strip_chars('"').str.replace_all('"','').str.replace(",",".").cast(pl.Float64),
+                        pl.col("totalCost").cast(pl.Utf8, strict=False).str.strip_chars('"').str.replace_all('"', '').str.replace(",", ".").cast(pl.Float64),
+                        pl.col("ecMaxContribution").cast(pl.Utf8, strict=False).str.strip_chars('"').str.replace_all('"', '').str.replace(",", ".").cast(pl.Float64),
                         pl.col("startDate").cast(pl.Utf8, strict=False).str.strip_chars('"').str.strptime(pl.Date, "%Y-%m-%d", strict=False),
                         pl.col("endDate").cast(pl.Utf8, strict=False).str.strip_chars('"').str.strptime(pl.Date, "%Y-%m-%d", strict=False),
                         pl.col("ecSignatureDate").cast(pl.Utf8, strict=False).str.strip_chars('"').str.strptime(pl.Date, "%Y-%m-%d", strict=False),
@@ -200,204 +185,133 @@ def combine_all_programmes() -> None:
                         pl.col("rcn").cast(pl.Int64),
                     ])
                     .with_columns(
-                        pl.lit(programme_dir.name).alias("programmeFolder")   # <-- NEW COLUMN
+                        pl.lit(programme_dir.name).alias("programmeFolder")
                     )
                 )
             elif dataset == "organization":
                 df = df.with_columns([
                     pl.col("contentUpdateDate").cast(pl.Utf8, strict=False).str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
-                    pl.col("totalCost").cast(pl.Utf8, strict=False).str.replace(",",".").cast(pl.Float64),
+                    pl.col("totalCost").cast(pl.Utf8, strict=False).str.replace(",", ".").cast(pl.Float64),
                 ])
             elif dataset == "projectDeliverables":
                 df = df.with_columns([
-                    #pl.col("projectID").cast(pl.Int64),
-                    pl.col("contentUpdateDate").cast(pl.Utf8, strict=False)
-                    .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
+                    pl.col("contentUpdateDate").cast(pl.Utf8, strict=False).str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
                 ])
             elif dataset == "projectPublications":
-                if programme_dir==Path(r"C:\Users\Romain\OneDrive - KU Leuven\Masters\MBIS\Year 2\Semester 2\Modern Data Analytics\CORDIS\H2013"):
+                # Special handling for H2013, else standardize
+                if programme_dir.name == "H2013":
                     rename_map = {
-                        "RECORD_ID":      "id",
-                        "TITLE":          "title",
-                        "AUTHOR":         "authors",
-                        "DOI":            "doi",
-                        "PROJECT_ID":     "projectID",
-                        "JOURNAL_TITLE":  "journalTitle",
-                        "PAGES":          "publishedPages",
+                        "RECORD_ID": "id",
+                        "TITLE": "title",
+                        "AUTHOR": "authors",
+                        "DOI": "doi",
+                        "PROJECT_ID": "projectID",
+                        "JOURNAL_TITLE": "journalTitle",
+                        "PAGES": "publishedPages",
                         "PUBLICATION_TYPE": "isPublishedAs",
                     }
-
                     df = df.rename(rename_map)
                 else:
                     df = df.with_columns([
-                        pl.col("contentUpdateDate").cast(pl.Utf8, strict=False)
-                        .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
-                        pl.col("id").cast(pl.Utf8, strict=False)
-                        .str.extract(r"^(\d+)_", 1)
-                        #.cast(pl.Int64)
-                        .alias("projectID"),
+                        pl.col("contentUpdateDate").cast(pl.Utf8, strict=False).str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
+                        pl.col("id").cast(pl.Utf8, strict=False).str.extract(r"^(\d+)_", 1).alias("projectID"),
                     ])
             elif dataset == "reportSummaries":
                 df = df.with_columns(
-                    pl.col("contentUpdateDate").cast(pl.Utf8, strict=False)
-                    .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
+                    pl.col("contentUpdateDate").cast(pl.Utf8, strict=False).str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
                 )
-            elif dataset == "organization":
-                df = df.with_columns([
-                    pl.col("contentUpdateDate").cast(pl.Utf8, strict=False)
-                    .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False),
-                    pl.col("totalCost").cast(pl.Utf8, strict=False)
-                    .str.replace(",", ".")
-                    .cast(pl.Float64),
-                ])
+            elif dataset == "webLink":
+                pass  # No special handling
             elif dataset == "webItem":
                 df = df.with_columns(
-                    pl.col("uri").cast(pl.Utf8, strict=False)
-                    .str.extract(r"/files/\d+/(\d+)/", 1)
-                    .cast(pl.Int64)
-                    .alias("projectID"),
+                    pl.col("uri").cast(pl.Utf8, strict=False).str.extract(r"/files/\d+/(\d+)/", 1).cast(pl.Int64).alias("projectID"),
                 )
+            elif dataset == "legalBasis":
+                pass  # No special handling
 
-            # ---------------------------------------------------------------
             combined.append(df)
 
-        # --------------------------------------------------------------------
-        # Write out per-dataset parquet
-        # --------------------------------------------------------------------
+        # Write out per-dataset Parquet
         if combined:
-            how="vertical_relaxed"
-            if dataset=="projectPublications":
-                how="diagonal"
+            how = "diagonal" if dataset == "projectPublications" else "vertical_relaxed"
             result = pl.concat(combined, how=how)
             parquet_path = OUTDIR / f"{dataset}_all.parquet"
             result.write_parquet(parquet_path)
-            print(f"✔  {dataset:15s} → {parquet_path}")
+            print(f"✔  {dataset:20s} → {parquet_path}")
 
-import pathlib
-import polars as pl
+# ==== CALL THE COMBINER FUNCTION TO GENERATE PARQUETS ========================
 
-ROOT    = pathlib.Path(r"C:\Users\Romain\OneDrive - KU Leuven\Masters\MBIS\Year 2\Semester 2\Modern Data Analytics\CORDIS")
-OUTDIR  = ROOT / "combined"
-DATASETS = [
-    "project",
-    "projectDeliverables",
-    "projectPublications",
-    "reportSummaries",
-    "organization",
-    "euroSciVoc",
-    "topics",
-    "webItem",
-    "webLink",
-    "legalBasis",
-]
+combine_all_programmes()
 
-dfs = {}
-for dataset in DATASETS:
-    path = OUTDIR / f"{dataset}_all.parquet"
-    dfs[dataset] = pl.read_parquet(path)
+# ==== AGGREGATION AND CONSOLIDATION ==========================================
 
-projects         = dfs["project"]
+# Load all combined Parquet files
+dfs = {dataset: pl.read_parquet(OUTDIR / f"{dataset}_all.parquet") for dataset in DATASETS}
 
-projects_deliv   = (
-    dfs["projectDeliverables"]
-    .group_by("projectID")
-    .agg([
-        pl.col("deliverableType").alias("list_deliverableType"),
-        pl.col("url")            .alias("list_url"),
-        pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
-    ])
-)
+# Aggregate per-project lists
+projects = dfs["project"]
 
-projects_publi   = (
-    dfs["projectPublications"]
-    .group_by("projectID")
-    .agg([
-        pl.col("authors")         .alias("list_authors"),
-        pl.col("title")           .alias("list_title"),
-        pl.col("doi")             .alias("list_doi"),
-        pl.col("journalTitle")    .alias("list_journalTitle"),
-        pl.col("isPublishedAs")   .alias("list_isPublishedAs"),
-        pl.col("publishedYear")   .alias("list_publishedYear"),
-        pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
-    ])
-)
+projects_deliv = dfs["projectDeliverables"].group_by("projectID").agg([
+    pl.col("deliverableType").alias("list_deliverableType"),
+    pl.col("url").alias("list_url"),
+    pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
+])
+projects_publi = dfs["projectPublications"].group_by("projectID").agg([
+    pl.col("authors").alias("list_authors"),
+    pl.col("title").alias("list_title"),
+    pl.col("doi").alias("list_doi"),
+    pl.col("journalTitle").alias("list_journalTitle"),
+    pl.col("isPublishedAs").alias("list_isPublishedAs"),
+    pl.col("publishedYear").alias("list_publishedYear"),
+    pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
+])
+report = dfs["reportSummaries"].group_by("projectID").agg([
+    pl.col("title").alias("list_title"),
+    pl.col("attachment").alias("list_attachment"),
+    pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
+])
+org = dfs["organization"].group_by("projectID").agg([
+    pl.col("organisationID").alias("list_organisationID"),
+    pl.col("country").alias("list_country"),
+    pl.col("name").alias("list_name"),
+    pl.col("SME").alias("list_SME"),
+    pl.col("city").alias("list_city"),
+    pl.col("geolocation").alias("list_geolocation"),
+    pl.col("organizationURL").alias("list_organizationURL"),
+    pl.col("role").alias("list_role"),
+    pl.col("ecContribution").alias("list_ecContribution"),
+    pl.col("netEcContribution").alias("list_netEcContribution"),
+    pl.col("totalCost").alias("list_totalCost"),
+    pl.col("endOfParticipation").alias("list_endOfParticipation"),
+    pl.col("activityType").alias("list_activityType"),
+    pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
+])
+voc = dfs["euroSciVoc"].group_by("projectID").agg([
+    pl.col("euroSciVocTitle").alias("list_euroSciVocTitle"),
+    pl.col("euroSciVocPath").alias("list_euroSciVocPath"),
+    pl.col("euroSciVocDescription").alias("list_description"),
+])
+topic = dfs["topics"].group_by("projectID").agg([
+    pl.col("topic").alias("list_topic"),
+    pl.col("title").alias("list_title"),
+])
+web_item = dfs["webItem"]
+web_link = dfs["webLink"].group_by("projectID").agg([
+    pl.col("physUrl").alias("list_physUrl"),
+    pl.col("availableLanguages").alias("list_availableLanguages"),
+    pl.col("status").alias("list_status"),
+    pl.col("archivedDate").alias("list_archivedDate"),
+    pl.col("type").alias("list_type"),
+    pl.col("source").alias("list_source"),
+    pl.col("represents").alias("list_represents"),
+])
+legal = dfs["legalBasis"].group_by("projectID").agg([
+    pl.col("legalBasis").alias("list_legalBasis"),
+    pl.col("title").alias("list_title"),
+    pl.col("uniqueProgrammePart").alias("list_uniqueProgrammePart"),
+])
 
-report = (
-    dfs["reportSummaries"]
-    .group_by("projectID")
-    .agg([
-        pl.col("title")           .alias("list_title"),
-        pl.col("attachment")      .alias("list_attachment"),
-        pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
-    ])
-)
-
-org = (
-    dfs["organization"]
-    .group_by("projectID")
-    .agg([
-        pl.col("organisationID")  .alias("list_organisationID"),
-        pl.col("country")         .alias("list_country"),
-        pl.col("name")            .alias("list_name"),
-        pl.col("SME")             .alias("list_SME"),
-        pl.col("city")            .alias("list_city"),
-        pl.col("geolocation")     .alias("list_geolocation"),
-        pl.col("organizationURL") .alias("list_organizationURL"),
-        pl.col("role")            .alias("list_role"),
-        pl.col("ecContribution")  .alias("list_ecContribution"),
-        pl.col("netEcContribution").alias("list_netEcContribution"),
-        pl.col("totalCost")       .alias("list_totalCost"),
-        pl.col("endOfParticipation").alias("list_endOfParticipation"),
-        pl.col("activityType")    .alias("list_activityType"),
-        pl.col("contentUpdateDate").alias("list_contentUpdateDate"),
-    ])
-)
-
-voc = (
-    dfs["euroSciVoc"]
-    .group_by("projectID")
-    .agg([
-        pl.col("euroSciVocTitle")      .alias("list_euroSciVocTitle"),
-        pl.col("euroSciVocPath")       .alias("list_euroSciVocPath"),
-        pl.col("euroSciVocDescription").alias("list_description"),
-    ])
-)
-
-topic = (
-    dfs["topics"]
-    .group_by("projectID")
-    .agg([
-        pl.col("topic")   .alias("list_topic"),
-        pl.col("title")   .alias("list_title"),
-    ])
-)
-
-web_item = dfs["webItem"]  # no aggregation
-
-web_link = (
-    dfs["webLink"]
-    .group_by("projectID")
-    .agg([
-        pl.col("physUrl")            .alias("list_physUrl"),
-        pl.col("availableLanguages") .alias("list_availableLanguages"),
-        pl.col("status")             .alias("list_status"),
-        pl.col("archivedDate")       .alias("list_archivedDate"),
-        pl.col("type")               .alias("list_type"),
-        pl.col("source")             .alias("list_source"),
-        pl.col("represents")         .alias("list_represents"),
-    ])
-)
-
-legal = (
-    dfs["legalBasis"]
-    .group_by("projectID")
-    .agg([
-        pl.col("legalBasis")         .alias("list_legalBasis"),
-        pl.col("title")              .alias("list_title"),
-        pl.col("uniqueProgrammePart").alias("list_uniqueProgrammePart"),
-    ])
-)
-
+# Join all aggregated info into a consolidated DataFrame
 consolidated = (
     projects
     .join(projects_deliv,   left_on="id", right_on="projectID", suffix="_deliv", how="left")
@@ -410,33 +324,31 @@ consolidated = (
     .join(voc,              left_on="id", right_on="projectID", suffix="_voc", how="left")
 )
 
+# Standardize dates and compute extra fields
 for col in ["startDate", "endDate"]:
     if consolidated[col].dtype == pl.Utf8:
         consolidated = consolidated.with_column(
             pl.col(col).str.strptime(pl.Date, "%Y-%m-%d").alias(col)
         )
 
-consolidated = consolidated.with_columns(
-    pl.col("list_netEcContribution").list.eval(pl.element().cast(pl.Float64),parallel=True)
-    .list.sum().alias("netEcContribution")
-)
-
-consolidated = consolidated.with_columns(
+consolidated = consolidated.with_columns([
+    pl.col("list_netEcContribution").list.eval(pl.element().cast(pl.Float64), parallel=True).list.sum().alias("netEcContribution"),
     pl.col("totalCost").cast(pl.Float64),
-    pl.col("netEcContribution").cast(pl.Float64)
-)
+    pl.col("startDate").dt.year().alias("startYear"),
+    pl.col("endDate").dt.year().alias("endYear"),
+    (pl.col("endDate") - pl.col("startDate")).dt.total_days().alias("durationDays"),
+])
 
 consolidated = consolidated.with_columns([
-    pl.col("startDate").dt.year().alias("startYear"),
-    pl.col("endDate").  dt.year().alias("endYear"),
-    (pl.col("endDate") - pl.col("startDate")).dt.total_days().alias("durationDays"),
-    (pl.col("netEcContribution") / pl.col("totalCost")).alias("ecRatio"),
+        (pl.col("netEcContribution") / pl.col("totalCost")).alias("ecRatio"),
 ])
 
 consolidated.write_parquet(OUTDIR / "consolidated.parquet")
+print(f"✔  consolidated → {OUTDIR / 'consolidated.parquet'}")
+
+# ==== CLEANING FILTERS =======================================================
 
 excluded_frameworks = ["FP1", "FP2", "FP3", "FP4", "FP5", "FP6"]
-
-consolidated_clean = (consolidated.filter(~pl.col("frameworkProgramme").is_in(excluded_frameworks)))
-
+consolidated_clean = consolidated.filter(~pl.col("frameworkProgramme").is_in(excluded_frameworks))
 consolidated_clean.write_parquet(OUTDIR / "consolidated_clean.parquet")
+print(f"✔  consolidated_clean → {OUTDIR / 'consolidated_clean.parquet'}")

@@ -125,17 +125,22 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
         </Flex>
 
         <Box
-            bg="gray.50"
-            p={4}
-            borderRadius="md"
-            height="500px"
-            overflowY="auto"
-            width="100%"
-          >
-          {!projects.length ? (
-            <Flex justify="center" py={10}><Spinner /></Flex>
-          ) : (
-            <Table variant="simple" size="sm" width="100%">
+                  bg="gray.50"
+                  p={4}
+                  borderRadius="md"
+                  height="500px"
+                  overflowY="auto"
+                >
+                {!projects.length ? (
+                  <Flex justify="center" py={10}>
+                    <Spinner />
+                  </Flex>
+                ) : (
+                  <Table
+                        variant="simple"
+                        size="sm"   
+                        width="100%"             
+                    >
               <Thead>
                 <Tr>
                 <Th width="60%" whiteSpace="nowrap">Title</Th>
@@ -153,11 +158,11 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     cursor="pointer"
                     _hover={{ bg: "gray.100" }}
                   >
-                    <Td isTruncated>{p.title}</Td>
+                    <Td overflow="hidden" textOverflow="ellipsis">{p.title}</Td>
                     <Td>{p.status}</Td>
                     <Td>{p.id}</Td>
                     <Td whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0, 10)}</Td>
-                    <Td>{p.ecMaxContribution.toLocaleString()}</Td>
+                    <Td>{p.ecMaxContribution?.toLocaleString()}</Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -177,11 +182,13 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
         bg="gray.50"
         p={4}
         borderRadius="md"
-        height="450px"
+        height="500px"
         display="flex"
         flexDirection="column"
       >
-        <Heading size="sm" mb={2}>Assistant</Heading>
+        <Heading size="sm" mb={2}>
+          Assistant
+        </Heading>
         <Box flex={1} overflowY="auto" mb={4}>
           <VStack spacing={3} align="stretch">
             {chatHistory.map((msg: ChatMessage, i: number) => (
