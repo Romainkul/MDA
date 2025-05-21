@@ -43,7 +43,7 @@ export const useAppState = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjects = () => {
-    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}`)
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}`)
       .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
       .catch(console.error);
