@@ -104,13 +104,35 @@ def get_projects(
 
     return projects
 
+from fastapi import FastAPI, Request
+import polars as pl
+
+app = FastAPI()
+
 @app.get("/api/filters")
-def get_filters():
+def get_filters(request: Request):
+    df: pl.DataFrame = app.state.df.lazy()
+    params = request.query_params
+
+    # apply the same filters you use elsewhere
+    if s := params.get("status"):
+        df = df.filter(pl.col("_status_lc") == s.lower())
+    if lb := params.get("legalBasis"):
+        df = df.filter(pl.col("_legalBasis_lc") == lb.lower())
+    if org := params.get("organization"):
+        df = df.filter(pl.col("list_name").list.contains(org))
+    if c := params.get("country"):
+        df = df.filter(pl.col("list_country").list.contains(c))
+    if search := params.get("search"):
+        df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
+
+    df = df.collect()
+
     return {
-        "statuses":      app.state.statuses,
-        "legalBases":    app.state.legal_bases,
-        "organizations": app.state.orgs_list,
-        "countries":     app.state.countries_list
+        "statuses":      sorted(set(df["status"].to_list())),
+        "legalBases":    sorted(set(df["legalBasis"].to_list())),
+        "organizations": sorted(set(df["list_name"].explode().to_list())),
+        "countries":     sorted(set(df["list_country"].explode().to_list()))
     }
 
 @app.get("/api/stats")

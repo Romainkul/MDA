@@ -1,4 +1,3 @@
-// src/components/Dashboard.tsx
 import { useState, useEffect, useRef } from "react";
 import {
   Box,
@@ -75,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [loadingStats, setLoadingStats] = useState(false);
   const fetchTimer = useRef<number | null>(null);
 
-  // Debounced stats fetch
+  // Debounced stats & filters fetch
   useEffect(() => {
     if (fetchTimer.current) clearTimeout(fetchTimer.current);
     fetchTimer.current = window.setTimeout(() => {
@@ -85,58 +84,45 @@ const Dashboard: React.FC<DashboardProps> = ({
       });
 
       setLoadingStats(true);
+      // Fetch stats
       fetch(`/api/stats?${qs.toString()}`)
         .then(res => res.json())
         .then((data: Stats) => setStatsData(data))
         .catch(console.error)
         .finally(() => setLoadingStats(false));
+
+      // Fetch available filters
+      fetch(`/api/filters?${qs.toString()}`)
+        .then(res => res.json())
+        .then((data: AvailableFilters) => setFilters(prev => ({ ...prev, ...{} } as any)))
+        .catch(console.error);
     }, 300);
+    return () => { if (fetchTimer.current) clearTimeout(fetchTimer.current); };
+  }, [filters, setFilters]);
 
-    return () => {
-      if (fetchTimer.current) clearTimeout(fetchTimer.current);
-    };
-  }, [filters]);
-
-  // Select & slider updaters
-  const updateFilter = (key: keyof FilterState) =>
-    (opt: { value: string } | null) =>
+  const updateFilter = (key: keyof FilterState) => 
+    (opt: { value: string } | null) => 
       setFilters(prev => ({ ...prev, [key]: opt?.value || "" }));
 
   const updateSlider = (
     k1: 'minYear' | 'minFunding',
     k2: 'maxYear' | 'maxFunding'
   ) => ([min, max]: number[]) =>
-    setFilters(prev => ({
-      ...prev,
-      [k1]: String(min),
-      [k2]: String(max),
-    }));
+    setFilters(prev => ({ ...prev, [k1]: String(min), [k2]: String(max) }));
 
   const filterKeys: Array<keyof FilterState> = [
     'status', 'organization', 'country', 'legalBasis'
   ];
 
   if (loadingStats && !Object.keys(statsData).length) {
-    return (
-      <Flex justify="center" mt={10}>
-        <Spinner size="xl" />
-      </Flex>
-    );
+    return <Flex justify="center" mt={10}><Spinner size="xl" /></Flex>;
   }
 
   return (
     <Box>
       {/* Filters */}
       <Box borderWidth="1px" borderRadius="lg" p={4} mb={6} bg="gray.50">
-        <Grid
-          templateColumns={{
-            base: '1fr',
-            sm: 'repeat(2,1fr)',
-            md: 'repeat(4,1fr)',
-            lg: 'repeat(6,1fr)',
-          }}
-          gap={4}
-        >
+        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2,1fr)', md: 'repeat(4,1fr)', lg: 'repeat(6,1fr)' }} gap={4}>
           {filterKeys.map(key => {
             const opts = availableFilters[
               key === 'status' ? 'statuses'
@@ -145,27 +131,20 @@ const Dashboard: React.FC<DashboardProps> = ({
               : 'legalBases'
             ] || [];
             const isOrg = key === 'organization';
-
             return (
               <GridItem key={key} colSpan={1}>
-                <Text fontSize="sm" mb={1} fontWeight="medium">
-                  {FILTER_LABELS[key]}
-                </Text>
+                <Text fontSize="sm" mb={1} fontWeight="medium">{FILTER_LABELS[key]}</Text>
                 <Select
                   options={opts.map(v => ({ label: v, value: v }))}
                   placeholder={FILTER_LABELS[key]}
                   onChange={updateFilter(key)}
                   isClearable
                   isSearchable
-                  {...(isOrg && {
-                    menuIsOpen: orgInput.length > 0,
-                    onInputChange: setOrgInput,
-                  })}
+                  {...(isOrg && { menuIsOpen: orgInput.length>0, onInputChange: setOrgInput })}
                 />
               </GridItem>
             );
           })}
-
           {/* Year Range */}
           <GridItem colSpan={{ base: 1, md: 2 }}>
             <Box mb={6}>
