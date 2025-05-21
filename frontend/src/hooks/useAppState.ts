@@ -49,13 +49,13 @@ export const useAppState = () => {
       .catch(console.error);
   };
 
-  const fetchStats = (filters: FilterState) => {
+  const fetchStats = debounce((filters: FilterState) => {
     const params = new URLSearchParams(filters);
     fetch(`/api/stats?${params.toString()}`)
       .then(res => res.json())
       .then((data: Stats) => setStats(data))
       .catch(console.error);
-  };    
+  }, 500);
 
   const fetchAvailableFilters = (filters: FilterState) => {
     const params = new URLSearchParams(filters);

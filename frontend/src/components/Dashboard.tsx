@@ -72,28 +72,26 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [orgInput, setOrgInput] = useState("");
   const [statsData, setStatsData] = useState<Stats>(initialStats);
   const [loadingStats, setLoadingStats] = useState(false);
+  const fetchTimer = useRef<number | null>(null);
 
   // Debounced stats & filters fetch
   useEffect(() => {
-    const qs = new URLSearchParams();
-    Object.entries(filters).forEach(([key, val]) => {
-      if (val) qs.set(key, val);
-    });
+    if (fetchTimer.current) clearTimeout(fetchTimer.current);
+    fetchTimer.current = window.setTimeout(() => {
+      const qs = new URLSearchParams();
+      Object.entries(filters).forEach(([k, v]) => v && qs.set(k, v));
 
-    setLoadingStats(true);
-    // Fetch stats
-    fetch(`/api/stats?${qs.toString()}`)
-      .then(res => res.json())
-      .then((data: Stats) => setStatsData(data))
-      .catch(console.error)
-      .finally(() => setLoadingStats(false));
+      setLoadingStats(true);
+      fetch(`/api/stats?${qs.toString()}`)
+        .then(r => r.json())
+        .then((data: Stats) => setStatsData(data))
+        .catch(console.error)
+        .finally(() => setLoadingStats(false));
 
-    // Fetch available filters
-    fetch(`/api/filters?${qs.toString()}`)
-      .then(res => res.json())
-      .then((data: AvailableFilters) => setFilters(prev => ({ ...prev, ...{} } as any)))
-      .catch(console.error);
+    }, 300);
+    return () => { if (fetchTimer.current) clearTimeout(fetchTimer.current); };
   }, [filters]);
+
 
   const updateFilter = (key: keyof FilterState) => 
     (opt: { value: string } | null) => 
