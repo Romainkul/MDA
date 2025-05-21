@@ -77,7 +77,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}
-      <Box flex={{ base: "none", md: "0 0 600px" }}  width={{ base: "100%", md: "600px" }}>
+      <Box flex={{ base: "none", md: "0 0 600px" }}  width={{ base: "100%", md: "900px" }}>
         <Heading size="sm" mb={2}>Projects</Heading>
         <Flex gap={4} mb={4} flexWrap="wrap">
           <Input
@@ -91,7 +91,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="150px"
+            width="120px"
           >
             {filterOpts.statuses.map((s) => <option key={s} value={s}>{s}</option>)}
           </ChakraSelect>
@@ -100,7 +100,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={legalFilter}
             onChange={(e) => { setLegalFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="150px"
+            width="120px"
           >
             {filterOpts.legalBases.map((lb) => <option key={lb} value={lb}>{lb}</option>)}
           </ChakraSelect>
@@ -109,7 +109,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={orgFilter}
             onChange={(e) => { setOrgFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="180px"
+            width="150px"
           >
             {filterOpts.organizations.map((o) => <option key={o} value={o}>{o}</option>)}
           </ChakraSelect>
@@ -118,7 +118,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={countryFilter}
             onChange={(e) => { setCountryFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="150px"
+            width="120px"
           >
             {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
           </ChakraSelect>
