@@ -9,9 +9,11 @@ from pydantic import BaseModel
 #except:
 #    from .rag import get_rag_chain, RAGRequest, RAGResponse
 from contextlib import asynccontextmanager
-
+import os
 import polars as pl
 import gcsfs
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Romain\OneDrive - KU Leuven\focal-pager-460414-e9-45369b738be0.json"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -121,29 +123,30 @@ def get_stats(request: Request):
 @app.get("/api/project/{project_id}/organizations")
 def get_project_organizations(project_id: str):
     df = app.state.df
+
     sel = df.filter(pl.col("id") == project_id)
     if sel.is_empty():
         raise HTTPException(status_code=404, detail="Project not found")
 
     orgs_df = (
-        sel.select([
-            pl.explode("list_name").alias("name"),
-            pl.explode("list_country").alias("country"),
-            pl.explode("list_geolocation").alias("geoloc"),
+        sel
+        .select([
+            pl.col("list_name").explode().alias("name"),
+            pl.col("list_country").explode().alias("country"),
+            pl.col("list_geolocation").explode().alias("geoloc"),
         ])
         .with_columns([
-            pl.col("geoloc")
-              .str.split_exact(",", 1)
-              .alias("latlon")
+            # now this is a List(Utf8)
+            pl.col("geoloc").str.split(",").alias("latlon"),
         ])
         .with_columns([
-            pl.col("latlon").list.get(0).cast(float).alias("latitude"),
-            pl.col("latlon").list.get(1).cast(float).alias("longitude")
+            pl.col("latlon").list.get(0).cast(pl.Float64).alias("latitude"),
+            pl.col("latlon").list.get(1).cast(pl.Float64).alias("longitude"),
         ])
         .filter(pl.col("name").is_not_null())
-        .select(["name","country","latitude","longitude"])
+        .select(["name", "country", "latitude", "longitude"])
     )
-    print(orgs_df)
+
     return orgs_df.to_dicts()
 
 """def rag_chain_depender():
