@@ -100,7 +100,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={legalFilter}
             onChange={(e) => { setLegalFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="120px"
+            width="150px"
           >
             {filterOpts.legalBases.map((lb) => <option key={lb} value={lb}>{lb}</option>)}
           </ChakraSelect>
@@ -143,11 +143,11 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     >
               <Thead>
                 <Tr>
-                <Th width="60%" whiteSpace="nowrap">Title</Th>
-                <Th width="10%" whiteSpace="nowrap">Status</Th>
-                <Th width="10%" whiteSpace="nowrap">ID</Th>
-                <Th width="10%" whiteSpace="nowrap">Start Date</Th>
-                <Th width="10%" whiteSpace="nowrap">Funding €</Th>
+                <Th width="50%" whiteSpace="nowrap">Title</Th>
+                <Th width="12.5%" whiteSpace="nowrap">Status</Th>
+                <Th width="12.5%" whiteSpace="nowrap">ID</Th>
+                <Th width="12.5%" whiteSpace="nowrap">Start Date</Th>
+                <Th width="12.5%" whiteSpace="nowrap">Funding €</Th>
                 </Tr>
               </Thead>
               <Tbody>
