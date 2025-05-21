@@ -18,7 +18,7 @@ import gcsfs
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     bucket = "mda_eu_project"
-    path   = "data/consolidated_clean.parquet"
+    path   = "data/consolidated_clean_pred.parquet" #"data/consolidated_clean.parquet"
     uri    = f"gs://{bucket}/{path}"
 
     fs = gcsfs.GCSFileSystem()
@@ -51,27 +51,58 @@ app.add_middleware(
 )
 
 @app.get("/api/projects")
-def get_projects(page: int = 0, limit: int = 10, search: str = "", status: str = ""):
-    df = app.state.df
+def get_projects(
+    page: int = 0,
+    limit: int = 10,
+    search: str = "",
+    status: str = ""
+):
+    df: pl.DataFrame = app.state.df
     start = page * limit
     sel = df
 
-    if search != "":
-        sel = sel.filter(pl.col("_title_lc").str.contains(search.lower()))
+    # case-insensitive title search
+    if search:
+        sel = sel.filter(
+            pl.col("_title_lc").str.contains(search.lower())
+        )
 
-    if status != "":
-        sel = sel.filter(pl.col("_status_lc") == status.lower())
+    # filter by status
+    if status:
+        sel = sel.filter(
+            pl.col("_status_lc") == status.lower()
+        )
 
-    return (
+    # slice for pagination and select all needed fields, including top-N features/shap and prediction
+    cols = [
+        "id", "title", "status", "startDate", "endDate",
+        "ecMaxContribution", "acronym", "legalBasis", "objective",
+        "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath",
+    ]
+    for i in range(1, 7):
+        cols += [f"top{i}_features", f"top{i}_shap"]
+
+    cols += ["predicted_label", "predicted_prob"]
+
+    rows = (
         sel.slice(start, limit)
-           .select([
-               "id","title","status","startDate","ecMaxContribution",
-               "acronym","endDate","legalBasis","objective",
-               "frameworkProgramme","list_euroSciVocTitle",
-               "list_euroSciVocPath"
-           ])
+           .select(cols)
            .to_dicts()
     )
+
+    # build explanations array for each row
+    projects = []
+    for row in rows:
+        explanations = []
+        for i in range(1, 7):
+            feat = row.pop(f"top{i}_features", None)
+            shap = row.pop(f"top{i}_shap", None)
+            if feat is not None and shap is not None:
+                explanations.append({"feature": feat, "shap": shap})
+        row["explanations"] = explanations
+        projects.append(row)
+
+    return projects
 
 @app.get("/api/filters")
 def get_filters():

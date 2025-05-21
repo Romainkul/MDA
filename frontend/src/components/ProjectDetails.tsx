@@ -17,6 +17,16 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from "recharts";
+import {
   MapContainer,
   TileLayer,
   Marker,
@@ -49,16 +59,11 @@ function ResizeMap({ count }: { count: number }) {
 }
 
 export default function ProjectDetails({
-  project,
-  question,
-  setQuestion,
-  askChatbot,
-  chatHistory = [],
-  messagesEndRef,
-}: ProjectDetailsProps) {
+  project,}: ProjectDetailsProps) {
   // fetch organization locations
   const [orgLocations, setOrgLocations] = useState<OrganizationLocation[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
+  const [loadingPlot, setLoadingPlot] = useState(true);
 
   useEffect(() => {
     if (!project) return;
@@ -77,7 +82,9 @@ export default function ProjectDetails({
       </Box>
     );
   }
-
+  const shapData = project.explanations;
+  const predicted = project.predicted_label;
+  const probability = project.predicted_prob;
   // Map center fallback
   const center: [number, number] = orgLocations.length
     ? [orgLocations[0].latitude, orgLocations[0].longitude]
@@ -178,61 +185,33 @@ export default function ProjectDetails({
         )}
       </Box>
 
-      {/* Right: Chatbot */}
-      <Box
-        flex={{ base: '1', md: '0.6' }}
-        bg="gray.50"
-        p={4}
-        borderRadius="md"
-        display="flex"
-        flexDirection="column"
-        maxH="600px"
-      >
-        <Heading size="sm" mb={2}>Ask about this project</Heading>
-
-        <Box flex={1} overflowY="auto" mb={4}>
-          <VStack spacing={3} align="stretch">
-            {(chatHistory ?? []).map((msg, i) => (
-              <HStack
-                key={i}
-                alignSelf={msg.role === "user" ? "flex-end" : "flex-start"}
-                maxW="90%"
-              >
-                {msg.role === "assistant" && <Avatar size="sm" name="Bot" />}
-                <Box>
-                  <Text
-                    fontSize="sm"
-                    bg={msg.role === "user" ? "blue.100" : "gray.200"}
-                    px={3}
-                    py={2}
-                    borderRadius="md"
-                  >
-                    {msg.content}
-                  </Text>
-                </Box>
-                {msg.role === "user" && <Avatar size="sm" name="You" bg="blue.300" />}
-              </HStack>
-            ))}
-            <div ref={messagesEndRef} />
-          </VStack>
-        </Box>
-
-        <HStack>
-          <Input
-            placeholder="Type your question..."
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                askChatbot();
-              }
-            }}
-          />
-          <Button onClick={askChatbot} aria-label="Send question">
-            Send
-          </Button>
-        </HStack>
+      {/* Right: Model Explanation */}
+      <Box flex={{ base: '1', md: '0.6' }} bg="white" p={4} borderRadius="md" boxShadow="sm">
+        <Heading size="sm" mb={4}>Model Prediction & Explanation</Heading>
+        {shapData?.length ? (
+          <>
+            <Text mb={2}><strong>Predicted Label:</strong> {predicted}</Text>
+            <Text mb={4}><strong>Probability:</strong> {(probability * 100).toFixed(2)}%</Text>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={shapData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="feature" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="shap" name="SHAP Value">
+                  {shapData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.shap >= 0 ? "#4caf50" : "#f44336"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </>
+        ) : (
+          <Spinner />
+        )}
       </Box>
     </Flex>
   );

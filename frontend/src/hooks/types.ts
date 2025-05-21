@@ -12,15 +12,18 @@ export interface Project {
   frameworkProgramme: string;
   list_euroSciVocTitle: string[];
   list_euroSciVocPath: string[];
+  explanations: Array<{ feature: string; shap: number }>;
+  predicted_label: number;
+  predicted_prob: number;
 }
 
 export interface ProjectDetailsProps {
   project: Project;
-  question: string;
-  setQuestion: React.Dispatch<React.SetStateAction<string>>;
-  askChatbot: () => void;
-  chatHistory: ChatMessage[];
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+//  question: string;
+//  setQuestion: React.Dispatch<React.SetStateAction<string>>;
+//  askChatbot: () => void;
+//  chatHistory: ChatMessage[];
+//  messagesEndRef: React.RefObject<HTMLDivElement>;
 }
 
 
