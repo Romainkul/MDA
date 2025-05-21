@@ -80,7 +80,7 @@ def get_projects(
         "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath",
     ]
     for i in range(1, 7):
-        cols += [f"top{i}_features", f"top{i}_shap"]
+        cols += [f"top{i}_feature", f"top{i}_shap"]
 
     cols += ["predicted_label", "predicted_prob"]
 
