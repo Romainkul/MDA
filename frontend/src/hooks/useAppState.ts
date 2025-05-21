@@ -17,6 +17,9 @@ export const useAppState = () => {
   const [question, setQuestion] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [stats, setStats] = useState<Stats>({});
+  const [legalFilter, setLegalFilter] = useState('');
+  const [orgFilter, setOrgFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     organization: "",
@@ -109,6 +112,12 @@ export const useAppState = () => {
       setSearch,
       statusFilter,
       setStatusFilter,
+      legalFilter,
+      setLegalFilter,
+      orgFilter,
+      setOrgFilter,
+      countryFilter,
+      setCountryFilter,
       page,
       setPage,
       setSelectedProject,
