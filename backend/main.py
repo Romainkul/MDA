@@ -95,7 +95,7 @@ def get_projects(
     for row in rows:
         explanations = []
         for i in range(1, 7):
-            feat = row.pop(f"top{i}_features", None)
+            feat = row.pop(f"top{i}_feature", None)
             shap = row.pop(f"top{i}_shap", None)
             if feat is not None and shap is not None:
                 explanations.append({"feature": feat, "shap": shap})
