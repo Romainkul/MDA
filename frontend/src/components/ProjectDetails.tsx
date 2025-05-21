@@ -186,7 +186,7 @@ export default function ProjectDetails({
       </Box>
 
       {/* Right: Model Explanation */}
-      <Box flex={{ base: '1', md: '0.6' }} bg="white" p={4} borderRadius="md" boxShadow="sm">
+      <Box flex={{ base: '1', md: '0.6' }} bg="grey" p={4} borderRadius="md" boxShadow="sm">
         <Heading size="sm" mb={4}>Model Prediction & Explanation</Heading>
         {shapData?.length ? (
           <>
