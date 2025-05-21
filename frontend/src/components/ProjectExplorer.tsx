@@ -178,7 +178,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
 
       {/* Right Pane: Assistant */}
       <Box
-        flex={{ base: 1, md: 0.4 }}
+        flex={{ base: 1, md: 0.6 }}
         bg="gray.50"
         p={4}
         borderRadius="md"
