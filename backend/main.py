@@ -121,12 +121,16 @@ def get_filters(request: Request):
     if search := params.get("search"):
         df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
 
+    def normalize(values):
+        return sorted(set("Unknown" if v is None else v for v in values))
+
     return {
-        "statuses":      sorted(set(df["status"].to_list())),
-        "legalBases":    sorted(set(df["legalBasis"].to_list())),
-        "organizations": sorted(set(df["list_name"].explode().to_list())),
-        "countries":     sorted(set(df["list_country"].explode().to_list()))
+        "statuses": normalize(df["status"].to_list()),
+        "legalBases": normalize(df["legalBasis"].to_list()),
+        "organizations": normalize(df["list_name"].explode().to_list()),
+        "countries": normalize(df["list_country"].explode().to_list()),
     }
+
 
 @app.get("/api/stats")
 def get_stats(request: Request):
