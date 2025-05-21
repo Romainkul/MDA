@@ -13,7 +13,7 @@ import os
 import polars as pl
 import gcsfs
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Romain\OneDrive - KU Leuven\focal-pager-460414-e9-45369b738be0.json"
+#os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Romain\OneDrive - KU Leuven\focal-pager-460414-e9-45369b738be0.json"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
