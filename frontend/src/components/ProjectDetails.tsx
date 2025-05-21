@@ -186,11 +186,11 @@ export default function ProjectDetails({
       </Box>
 
       {/* Right: Model Explanation */}
-      <Box flex={{ base: '1', md: '0.6' }} bg="grey" p={4} borderRadius="md" boxShadow="sm">
+      <Box flex={{ base: '1', md: '0.6' }} bg="gray.50" p={4} borderRadius="md" boxShadow="sm" height="400px">
         <Heading size="sm" mb={4}>Model Prediction & Explanation</Heading>
         {shapData?.length ? (
           <>
-            <Text mb={2}><strong>Predicted Label:</strong> {predicted}</Text>
+            <Text mb={2}><strong>Predicted Label:</strong> {predicted === 1 ? 'Terminated' : 'Closed'}</Text>
             <Text mb={4}><strong>Probability:</strong> {(probability * 100).toFixed(2)}%</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={shapData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
@@ -202,7 +202,7 @@ export default function ProjectDetails({
                   {shapData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={entry.shap >= 0 ? "#4caf50" : "#f44336"}
+                      fill={entry.shap >= 0 ? "#003399" : "#FFCC00"}
                     />
                   ))}
                 </Bar>

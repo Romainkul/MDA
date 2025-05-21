@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";//React, 
+// src/components/Dashboard.tsx
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Grid,
@@ -45,12 +46,14 @@ ChartJS.register(
 
 interface ChartData { labels: string[]; values: number[]; }
 interface Stats { [key: string]: ChartData; }
+
 const FILTER_LABELS: Record<keyof FilterState, string> = {
   status:       "Status",
   organization: "Organization",
   country:      "Country",
   legalBasis:   "Legal Basis",
 };
+
 interface DashboardProps {
   stats: Stats;
   filters: FilterState;
@@ -70,27 +73,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [orgInput, setOrgInput] = useState("");
   const [statsData, setStatsData] = useState<Stats>(initialStats);
   const [loadingStats, setLoadingStats] = useState(false);
-
-  // ref to hold our debounce timer
   const fetchTimer = useRef<number | null>(null);
 
+  // Debounced stats fetch
   useEffect(() => {
-    // clear any pending fetch
-    if (fetchTimer.current) {
-      clearTimeout(fetchTimer.current);
-    }
-
-    // schedule new fetch 300ms after last filter change
+    if (fetchTimer.current) clearTimeout(fetchTimer.current);
     fetchTimer.current = window.setTimeout(() => {
       const qs = new URLSearchParams();
-      if (filters.status)       qs.set("status", filters.status);
-      if (filters.organization) qs.set("organization", filters.organization);
-      if (filters.country)      qs.set("country", filters.country);
-      if (filters.legalBasis)   qs.set("legalBasis", filters.legalBasis);
-      qs.set("minYear",    filters.minYear);
-      qs.set("maxYear",    filters.maxYear);
-      qs.set("minFunding", filters.minFunding);
-      qs.set("maxFunding", filters.maxFunding);
+      Object.entries(filters).forEach(([key, val]) => {
+        if (val) qs.set(key, val);
+      });
 
       setLoadingStats(true);
       fetch(`/api/stats?${qs.toString()}`)
@@ -100,29 +92,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         .finally(() => setLoadingStats(false));
     }, 300);
 
-    // cleanup on unmount or next effect-run
     return () => {
-      if (fetchTimer.current) {
-        clearTimeout(fetchTimer.current);
-      }
+      if (fetchTimer.current) clearTimeout(fetchTimer.current);
     };
-  }, [
-    filters.status,
-    filters.organization,
-    filters.country,
-    filters.legalBasis,
-    filters.minYear,
-    filters.maxYear,
-    filters.minFunding,
-    filters.maxFunding,
-  ]);
+  }, [filters]);
 
-  const updateFilter = (key: keyof FilterState) => (opt: { value: string } | null) =>
-    setFilters(prev => ({ ...prev, [key]: opt?.value || "" }));
+  // Select & slider updaters
+  const updateFilter = (key: keyof FilterState) =>
+    (opt: { value: string } | null) =>
+      setFilters(prev => ({ ...prev, [key]: opt?.value || "" }));
 
   const updateSlider = (
-    k1: "minYear" | "minFunding",
-    k2: "maxYear" | "maxFunding"
+    k1: 'minYear' | 'minFunding',
+    k2: 'maxYear' | 'maxFunding'
   ) => ([min, max]: number[]) =>
     setFilters(prev => ({
       ...prev,
@@ -131,13 +113,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     }));
 
   const filterKeys: Array<keyof FilterState> = [
-    "status",
-    "organization",
-    "country",
-    "legalBasis",
+    'status', 'organization', 'country', 'legalBasis'
   ];
 
-  // initial blank-state spinner
   if (loadingStats && !Object.keys(statsData).length) {
     return (
       <Flex justify="center" mt={10}>
@@ -152,26 +130,21 @@ const Dashboard: React.FC<DashboardProps> = ({
       <Box borderWidth="1px" borderRadius="lg" p={4} mb={6} bg="gray.50">
         <Grid
           templateColumns={{
-            base: "repeat(1,1fr)",
-            sm: "repeat(2,1fr)",
-            md: "repeat(3,1fr)",
-            lg: "repeat(6,1fr)",
+            base: '1fr',
+            sm: 'repeat(2,1fr)',
+            md: 'repeat(4,1fr)',
+            lg: 'repeat(6,1fr)',
           }}
           gap={4}
-          columnGap={6}
         >
-          {filterKeys.map((key) => {
-            const isOrg = key === "organization";
-            const opts =
-              availableFilters[
-                key === "status"
-                  ? "statuses"
-                  : key === "organization"
-                  ? "organizations"
-                  : key === "country"
-                  ? "countries"
-                  : "legalBases"
-              ] || [];
+          {filterKeys.map(key => {
+            const opts = availableFilters[
+              key === 'status' ? 'statuses'
+              : key === 'organization' ? 'organizations'
+              : key === 'country' ? 'countries'
+              : 'legalBases'
+            ] || [];
+            const isOrg = key === 'organization';
 
             return (
               <GridItem key={key} colSpan={1}>
@@ -180,17 +153,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </Text>
                 <Select
                   options={opts.map(v => ({ label: v, value: v }))}
-                  placeholder={`Select ${key}`}
+                  placeholder={FILTER_LABELS[key]}
                   onChange={updateFilter(key)}
                   isClearable
                   isSearchable
-                  openMenuOnClick
-                  openMenuOnFocus
                   {...(isOrg && {
-                    openMenuOnClick: false,
-                    openMenuOnFocus: false,
                     menuIsOpen: orgInput.length > 0,
-                    onInputChange: (str: string) => setOrgInput(str),
+                    onInputChange: setOrgInput,
                   })}
                 />
               </GridItem>
@@ -198,7 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           })}
 
           {/* Year Range */}
-          <GridItem colSpan={{ base: 1, md: 3 }}>
+          <GridItem colSpan={{ base: 1, md: 2 }}>
             <Box mb={6}>
               <Flex justify="space-between" mb={1}>
                 <Text fontSize="sm" fontWeight="medium">Year Range</Text>
@@ -216,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 size="md"
               >
                 <RangeSliderTrack>
-                  <RangeSliderFilledTrack bg="brand.blue" />
+                  <RangeSliderFilledTrack />
                 </RangeSliderTrack>
                 <RangeSliderThumb index={0} boxSize={4}/>
                 <RangeSliderThumb index={1} boxSize={4}/>
@@ -225,7 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </GridItem>
 
           {/* Funding Range */}
-          <GridItem colSpan={{ base: 1, md: 3 }}>
+          <GridItem colSpan={{ base: 1, md: 2 }}>
             <Box>
               <Flex justify="space-between" mb={1}>
                 <Text fontSize="sm" fontWeight="medium">Funding (€)</Text>
@@ -236,14 +205,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               <RangeSlider
                 aria-label={["Min Funding","Max Funding"]}
                 min={0}
-                max={10_000_000}
-                step={100_000}
+                max={1e7}
+                step={1e5}
                 defaultValue={[+filters.minFunding, +filters.maxFunding]}
                 onChange={updateSlider("minFunding","maxFunding")}
                 size="md"
               >
                 <RangeSliderTrack>
-                  <RangeSliderFilledTrack bg="brand.blue" />
+                  <RangeSliderFilledTrack />
                 </RangeSliderTrack>
                 <RangeSliderThumb index={0} boxSize={4}/>
                 <RangeSliderThumb index={1} boxSize={4}/>

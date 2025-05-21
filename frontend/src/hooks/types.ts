@@ -74,6 +74,12 @@ export interface ProjectExplorerProps {
   setSearch: (value: string) => void;
   statusFilter: string;
   setStatusFilter: (value: string) => void;
+  legalFilter: string;
+  setLegalFilter: (value: string) => void;
+  orgFilter: string;
+  setOrgFilter: (value: string) => void;
+  countryFilter: string;
+  setCountryFilter: (value: string) => void;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   setSelectedProject: (project: Project) => void;
