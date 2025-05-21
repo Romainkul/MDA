@@ -121,8 +121,6 @@ def get_filters(request: Request):
     if search := params.get("search"):
         df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
 
-    df = df.collect()
-
     return {
         "statuses":      sorted(set(df["status"].to_list())),
         "legalBases":    sorted(set(df["legalBasis"].to_list())),
