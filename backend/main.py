@@ -104,14 +104,9 @@ def get_projects(
 
     return projects
 
-from fastapi import FastAPI, Request
-import polars as pl
-
-app = FastAPI()
-
 @app.get("/api/filters")
 def get_filters(request: Request):
-    df: pl.DataFrame = app.state.df.lazy()
+    df = app.state.df
     params = request.query_params
 
     # apply the same filters you use elsewhere
