@@ -55,25 +55,26 @@ def get_projects(
     page: int = 0,
     limit: int = 10,
     search: str = "",
-    status: str = ""
+    status: str = "",
+    legalBasis: str = "",
+    organization: str = "",
+    country: str = ""
 ):
     df: pl.DataFrame = app.state.df
     start = page * limit
     sel = df
 
-    # case-insensitive title search
     if search:
-        sel = sel.filter(
-            pl.col("_title_lc").str.contains(search.lower())
-        )
-
-    # filter by status
+        sel = sel.filter(pl.col("_title_lc").str.contains(search.lower()))
     if status:
-        sel = sel.filter(
-            pl.col("_status_lc") == status.lower()
-        )
+        sel = sel.filter(pl.col("_status_lc") == status.lower())
+    if legalBasis:
+        sel = sel.filter(pl.col("_legalBasis_lc") == legalBasis.lower())
+    if organization:
+        sel = sel.filter(pl.col("list_name").list.contains(organization))
+    if country:
+        sel = sel.filter(pl.col("list_country").list.contains(country))
 
-    # slice for pagination and select all needed fields, including top-N features/shap and prediction
     cols = [
         "id", "title", "status", "startDate", "endDate",
         "ecMaxContribution", "acronym", "legalBasis", "objective",
@@ -90,7 +91,6 @@ def get_projects(
            .to_dicts()
     )
 
-    # build explanations array for each row
     projects = []
     for row in rows:
         explanations = []
@@ -103,6 +103,7 @@ def get_projects(
         projects.append(row)
 
     return projects
+
 
 @app.get("/api/filters")
 def get_filters(request: Request):
