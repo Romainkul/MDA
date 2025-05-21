@@ -73,6 +73,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
       .finally(() => setLoadingFilters(false));
   }, [statusFilter, legalFilter, orgFilter, countryFilter, search]);
 
+
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}

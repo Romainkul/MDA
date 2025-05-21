@@ -91,7 +91,7 @@ export const useAppState = () => {
     }
   };
 
-  useEffect(fetchProjects, [page, search, statusFilter]);
+  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter]);
   useEffect(() => {
     console.log("Updated filters:", filters);
     fetchStats(filters);
