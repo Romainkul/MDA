@@ -77,7 +77,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}
-      <Box flex={{ base: "none", md: "0 0 600px" }}  width={{ base: "100%", md: "900px" }}>
+      <Box flex={{ base: "none", md: "0 0 900px" }}  width={{ base: "100%", md: "1200px" }}>
         <Heading size="sm" mb={2}>Projects</Heading>
         <Flex gap={4} mb={4} flexWrap="wrap">
           <Input
