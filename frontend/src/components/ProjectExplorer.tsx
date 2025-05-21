@@ -77,9 +77,9 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}
-      <Box flex={{ base: 1, md: 0.6 }}>
+      <Box flex={{ base: "none", md: "0 0 600px" }}  width={{ base: "100%", md: "600px" }}>
         <Heading size="sm" mb={2}>Projects</Heading>
-        <Flex gap={4} mb={4} flexWrap="wrap"> 
+        <Flex gap={4} mb={4} flexWrap="wrap">
           <Input
             placeholder="Search by title..."
             value={search}
@@ -124,7 +124,14 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
           </ChakraSelect>
         </Flex>
 
-        <Box bg="gray.50" p={4} borderRadius="md" height="500px" overflowY="auto">
+        <Box
+            bg="gray.50"
+            p={4}
+            borderRadius="md"
+            height="500px"
+            overflowY="auto"
+            width="100%"
+          >
           {!projects.length ? (
             <Flex justify="center" py={10}><Spinner /></Flex>
           ) : (
@@ -170,7 +177,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
         bg="gray.50"
         p={4}
         borderRadius="md"
-        height="500px"
+        height="450px"
         display="flex"
         flexDirection="column"
       >
