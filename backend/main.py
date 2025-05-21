@@ -123,7 +123,7 @@ def get_filters(request: Request):
         df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
 
     def normalize(values):
-        return sorted(set("Unknown" if v is None else v for v in values))
+        return sorted(set("UNKNOWN" if v is None else v for v in values))
 
     return {
         "statuses": normalize(df["status"].to_list()),

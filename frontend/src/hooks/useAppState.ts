@@ -63,7 +63,7 @@ export const useAppState = () => {
       .then(res => res.json())
       .then((data: Omit<AvailableFilters, 'statuses'>) => {
         setAvailableFilters({
-          statuses: ["SIGNED", "CLOSED", "TERMINATED"],
+          statuses: ["SIGNED", "CLOSED", "TERMINATED", "UNKNOWN"],
           organizations: data.organizations,
           countries: data.countries,
           legalBases: data.legalBases
