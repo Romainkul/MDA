@@ -72,10 +72,7 @@ settings = Settings()
 
 # Pre‐instantiate embedding model (used by filter/compressor)
 EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model,
-    model_kwargs={"trust_remote_code": True,"force_download": True, "subfolder": "old_models/LaBSE/0_Transformer"},
-    tokenizer_kwargs={
-        "subfolder": "old_models/LaBSE/0_Transformer"
-    })
+    model_kwargs={"trust_remote_code": True,"force_download": True, "subfolder": "old_models/LaBSE/0_Transformer"})
 
 @lru_cache(maxsize=256)
 def embed_query_cached(query: str) -> List[float]:
