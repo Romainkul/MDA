@@ -103,7 +103,6 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // toggle using current sortOrder value
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);

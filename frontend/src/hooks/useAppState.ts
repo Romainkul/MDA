@@ -9,6 +9,8 @@ interface Stats {
   };
 }
 
+type SortOrder = "asc" | "desc";
+
 export const useAppState = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState<string>("");
@@ -23,7 +25,7 @@ export const useAppState = () => {
   const [fundingSchemeFilter, setFundingSchemeFilter ] = useState('');
   const [idFilter, setIdFilter] = useState('');
   const [sortField, setSortField] = useState('');
-  const [sortOrder, setSortOrder] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     organization: "",
