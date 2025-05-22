@@ -18,8 +18,8 @@ echo "$GCP_SA_JSON" > /tmp/sa.json
 chmod 600 /tmp/sa.json
 
 export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-export TRANSFORMERS_CACHE=/app/.cache/huggingface
-export HF_HOME=/app/.cache/huggingface
+#export TRANSFORMERS_CACHE=/app/.cache/huggingface
+#export HF_HOME=/app/.cache/huggingface
 nginx -g "daemon off;" &
 NGINX_PID=$!
 
