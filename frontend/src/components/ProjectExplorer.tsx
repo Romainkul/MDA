@@ -201,8 +201,6 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     >
               <Thead>
                 <Tr>
-              <Thead>
-                <Tr>
                   <Th w="50%" whiteSpace="nowrap" onClick={() => handleSort('title')} cursor="pointer">
                     Title{sortField==='title'? (sortOrder==='asc'?' ↑':' ↓'):''}
                   </Th>
@@ -221,8 +219,6 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                   <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('ecMaxContribution')} cursor="pointer">
                     Funding (€){sortField==='ecMaxContribution'? (sortOrder==='asc'?' ↑':' ↓'):''}
                   </Th>
-                </Tr>
-              </Thead>
                 </Tr>
               </Thead>
               <Tbody>
