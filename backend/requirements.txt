@@ -28,9 +28,9 @@ faiss-cpu==1.11.0
 whoosh==2.7.4
 
 # Transformers
-torch==2.3.0 
-transformers==4.51.3
-torchvision==0.18.0 
+torch
+transformers=
+torchvision
 accelerate==0.29.3 
 sympy==1.12
 peft==0.11.1
