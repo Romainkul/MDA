@@ -67,7 +67,10 @@ def get_projects(
     if search:
         sel = sel.filter(pl.col("_title_lc").str.contains(search.lower()))
     if status:
-        sel = sel.filter(pl.col("_status_lc") == status.lower())
+        if status =="UNKNOWN":
+            sel = sel.filter(pl.col("status").is_null())
+        else:
+            sel = sel.filter(pl.col("_status_lc") == status.lower())
     if legalBasis:
         sel = sel.filter(pl.col("_legalBasis_lc") == legalBasis.lower())
     if organization:
@@ -112,7 +115,10 @@ def get_filters(request: Request):
 
     # apply the same filters you use elsewhere
     if s := params.get("status"):
-        df = df.filter(pl.col("_status_lc") == s.lower())
+        if s == "UNKNOWN":
+            df = df.filter(pl.col("status").is_null())
+        else:
+            df = df.filter(pl.col("_status_lc") == s.lower())
     if lb := params.get("legalBasis"):
         df = df.filter(pl.col("_legalBasis_lc") == lb.lower())
     if org := params.get("organization"):
