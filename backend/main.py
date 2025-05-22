@@ -34,11 +34,6 @@ import faiss
 
 from functools import lru_cache
 
-env_cache = os.environ.get("TRANSFORMERS_CACHE")
-if env_cache:
-    os.environ["HF_HOME"] = env_cache
-    del os.environ["TRANSFORMERS_CACHE"]
-
 # ---------------------------------------------------------------------------- #
 #                                   Settings                                   #
 # ---------------------------------------------------------------------------- #
