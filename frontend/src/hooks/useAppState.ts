@@ -86,10 +86,10 @@ export const useAppState = () => {
     setQuestion("");
 
     try {
-      const res = await fetch("/api/chat/query", {
+      const res = await fetch("/rag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
+        body: JSON.stringify({ query: question })
       });
 
       const data: { answer: string } = await res.json();
