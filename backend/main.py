@@ -65,7 +65,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Pre‐instantiate embedding model (used by filter/compressor)
-EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model)
+EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model,
+    model_kwargs={"trust_remote_code": True})
 
 @lru_cache(maxsize=256)
 def embed_query_cached(query: str) -> List[float]:
