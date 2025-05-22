@@ -189,62 +189,69 @@ export default function ProjectDetails({
           </Box>
         )}
 
-        <Heading size="md" mb={3}>Participating Organizations</Heading>
-        {loadingOrgs ? (
-          <Spinner />
-        ) : (
-          <Table size="sm" variant="simple" mb={6}>
-            <Thead><Tr>
-              <Th whiteSpace="nowrap">Name</Th>
-              <Th whiteSpace="nowrap">Location</Th>
-              <Th whiteSpace="nowrap">SME</Th>
-              <Th whiteSpace="nowrap">Role</Th>
-              <Th isNumeric whiteSpace="nowrap">Contribution</Th>
-              <Th whiteSpace="nowrap">Activity Type</Th>
-            </Tr></Thead>
-            <Tbody>
-              {orgLocations.map((o, i) => (
-                <Tr key={i}>
-                  <Td>
-                    {o.orgURL ? (
-                      <Link href={o.orgURL} isExternal>
-                        {o.name} <ExternalLinkIcon mx="2px" />
-                      </Link>
-                    ) : (
-                      <Text>{o.name}</Text>
-                    )}
-                  </Td>
-                  <Td whiteSpace="nowrap">{`${o.city || '-'}, ${o.country}`}</Td>
-                  <Td>{o.sme ? <Icon as={CheckIcon} /> : <Icon as={CloseIcon} />}</Td>
-                  <Td>{o.role}</Td>
-                  <Td isNumeric>€{fmtNum(o.contribution)}</Td>
-                  <Td>{o.activityType}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
+        {orgLocations.length > 0 && (
+          <>
+            <Heading size="md" mb={3}>Participating Organizations</Heading>
+
+            {loadingOrgs ? (
+              <Spinner />
+            ) : (
+              <Table size="sm" variant="simple" mb={6}>
+                <Thead>
+                  <Tr>
+                    <Th whiteSpace="nowrap">Name</Th>
+                    <Th whiteSpace="nowrap">Location</Th>
+                    <Th whiteSpace="nowrap">SME</Th>
+                    <Th whiteSpace="nowrap">Role</Th>
+                    <Th isNumeric whiteSpace="nowrap">Contribution</Th>
+                    <Th whiteSpace="nowrap">Activity Type</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {orgLocations.map((o, i) => (
+                    <Tr key={i}>
+                      <Td>
+                        {o.orgURL ? (
+                          <Link href={o.orgURL} isExternal>
+                            {o.name} <ExternalLinkIcon mx="2px" />
+                          </Link>
+                        ) : (
+                          <Text>{o.name}</Text>
+                        )}
+                      </Td>
+                      <Td whiteSpace="nowrap">{`${o.city || '-'}, ${o.country}`}</Td>
+                      <Td>{o.sme ? <Icon as={CheckIcon} /> : <Icon as={CloseIcon} />}</Td>
+                      <Td>{o.role}</Td>
+                      <Td isNumeric>€{fmtNum(o.contribution)}</Td>
+                      <Td>{o.activityType}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            )}
+
+            {!loadingOrgs && (
+              <Box w="100%" h="300px" borderRadius="md" overflow="hidden">
+                <MapContainer center={center} zoom={4} style={{ height: '100%', width: '100%' }}>
+                  <ResizeMap count={orgLocations.length} />
+                  <TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {orgLocations.map((org, i) => (
+                    <Marker key={i} position={[org.latitude, org.longitude]} icon={customIcon}>
+                      <Popup>
+                        <Text fontWeight="bold">{org.name}</Text>
+                        <Text>{org.country}</Text>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </Box>
+            )}
+          </>
         )}
-        {loadingOrgs ? (
-          <Spinner />
-        ) : (
-          <Box w="100%" h="300px" borderRadius="md" overflow="hidden">
-            <MapContainer center={center} zoom={4} style={{ height: '100%', width: '100%' }}>
-              <ResizeMap count={orgLocations.length} />
-              <TileLayer
-                attribution="&copy; OpenStreetMap contributors"
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {orgLocations.map((org, i) => (
-                <Marker key={i} position={[org.latitude, org.longitude]} icon={customIcon}>
-                  <Popup>
-                    <Text fontWeight="bold">{org.name}</Text>
-                    <Text>{org.country}</Text>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          </Box>
-        )}
+
       </Box>
 
       {/* Right: Model Explanation */}
