@@ -94,7 +94,6 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}
       <Box w={{ base: "100%", md: "70%" }} p={4}>
-        <Heading size="sm" mb={2}>Projects</Heading>
         <Flex gap={4} mb={4} flexWrap="wrap">
           {/* Title search */}
           <Input
@@ -180,7 +179,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                 <Th width="10%" whiteSpace="nowrap">ID</Th>
                 <Th width="10%" whiteSpace="nowrap">Start Date</Th>
                 <Th width="10%" whiteSpace="nowrap">Funding Scheme</Th>
-                <Th width="10%" whiteSpace="nowrap">Funding €</Th>
+                <Th width="10%" whiteSpace="nowrap">Funding</Th>
                 </Tr>
               </Thead>
               <Tbody>

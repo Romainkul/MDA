@@ -199,7 +199,7 @@ export default function ProjectDetails({
               <Th whiteSpace="nowrap">Location</Th>
               <Th whiteSpace="nowrap">SME</Th>
               <Th whiteSpace="nowrap">Role</Th>
-              <Th isNumeric whiteSpace="nowrap">Contribution (€)</Th>
+              <Th isNumeric whiteSpace="nowrap">Contribution</Th>
               <Th whiteSpace="nowrap">Activity Type</Th>
             </Tr></Thead>
             <Tbody>
