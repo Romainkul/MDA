@@ -25,6 +25,8 @@ interface FilterOptions {
   legalBases: string[];
   organizations: string[];
   countries: string[];
+  fundingSchemes: string[];
+  ids: string[];
 }
 
 const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
@@ -39,6 +41,10 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   setOrgFilter,
   countryFilter,
   setCountryFilter,
+  fundingSchemeFilter,
+  setFundingSchemeFilter,
+  idFilter,
+  setIdFilter,
   page,
   setPage,
   setSelectedProject,
@@ -52,7 +58,9 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     statuses: [],
     legalBases: [],
     organizations: [],
-    countries: []
+    countries: [],
+    fundingSchemes: [],
+    ids: [],
   });
   const [loadingFilters, setLoadingFilters] = useState(false);
 
@@ -65,13 +73,15 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     if (orgFilter)    params.set("organization", orgFilter);
     if (countryFilter) params.set("country", countryFilter);
     if (search)       params.set("search", search);
+    if (idFilter)    params.set("id", idFilter);
+    if (fundingSchemeFilter) params.set("fundingScheme", fundingSchemeFilter);
 
     fetch(`/api/filters?${params.toString()}`)
       .then((res) => res.json())
       .then((data: FilterOptions) => setFilterOpts(data))
       .catch(console.error)
       .finally(() => setLoadingFilters(false));
-  }, [statusFilter, legalFilter, orgFilter, countryFilter, search]);
+  }, [statusFilter, legalFilter, orgFilter, countryFilter, search, idFilter, fundingSchemeFilter]);
   
   const fmtNum = (num: number | null | undefined): string =>
     num != null
@@ -127,6 +137,24 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
           >
             {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
           </ChakraSelect>
+          <ChakraSelect
+            placeholder={loadingFilters ? "Loading..." : "Funding Scheme"}
+            value={countryFilter}
+            onChange={(e) => { setFundingSchemeFilter(e.target.value); setPage(0); }}
+            isDisabled={loadingFilters}
+            width="120px"
+          >
+            {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
+          </ChakraSelect>
+          <ChakraSelect
+            placeholder={loadingFilters ? "Loading..." : "ID"}
+            value={countryFilter}
+            onChange={(e) => { setIdFilter(e.target.value); setPage(0); }}
+            isDisabled={loadingFilters}
+            width="100px"
+          >
+            {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
+          </ChakraSelect>
         </Flex>
 
         <Box
@@ -149,10 +177,11 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
               <Thead>
                 <Tr>
                 <Th width="50%" whiteSpace="nowrap">Title</Th>
-                <Th width="12.5%" whiteSpace="nowrap">Status</Th>
-                <Th width="12.5%" whiteSpace="nowrap">ID</Th>
-                <Th width="12.5%" whiteSpace="nowrap">Start Date</Th>
-                <Th width="12.5%" whiteSpace="nowrap">Funding €</Th>
+                <Th width="10%" whiteSpace="nowrap">Status</Th>
+                <Th width="10%" whiteSpace="nowrap">ID</Th>
+                <Th width="10%" whiteSpace="nowrap">Start Date</Th>
+                <Th width="10%" whiteSpace="nowrap">Funding Scheme</Th>
+                <Th width="10%" whiteSpace="nowrap">Funding €</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -167,6 +196,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     <Td>{p.status}</Td>
                     <Td>{p.id}</Td>
                     <Td whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0, 10)}</Td>
+                    <Td>{p.fundingScheme}</Td>
                     <Td>€{fmtNum(p.ecMaxContribution)}</Td>
                   </Tr>
                 ))}

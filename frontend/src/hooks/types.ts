@@ -17,6 +17,7 @@ export interface Project {
   predicted_prob: number;
   totalCost: number | null | undefined;
   publications:{ [type: string]: number };
+  fundingScheme: string;
 }
 
 export interface ProjectDetailsProps {
@@ -88,6 +89,10 @@ export interface ProjectExplorerProps {
   setOrgFilter: (value: string) => void;
   countryFilter: string;
   setCountryFilter: (value: string) => void;
+  fundingSchemeFilter: string;
+  setFundingSchemeFilter: (value: string) => void;
+  idFilter: string;
+  setIdFilter: (value: string) => void;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   setSelectedProject: (project: Project) => void;

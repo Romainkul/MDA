@@ -20,6 +20,8 @@ export const useAppState = () => {
   const [legalFilter, setLegalFilter] = useState('');
   const [orgFilter, setOrgFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
+  const [fundingSchemeFilter, setFundingSchemeFilter ] = useState('');
+  const [idFilter, setIdFilter] = useState('');
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     organization: "",
@@ -34,7 +36,7 @@ export const useAppState = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   const [availableFilters, setAvailableFilters] = useState<AvailableFilters>({
-    statuses: ["SIGNED", "CLOSED", "TERMINATED"],
+    statuses: ["SIGNED", "CLOSED", "TERMINATED","UNKNOWN"],
     organizations: [],
     countries: [],
     legalBases: []
@@ -43,7 +45,7 @@ export const useAppState = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjects = () => {
-    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}`)
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&id=${idFilter}`)
       .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
       .catch(console.error);
@@ -91,7 +93,7 @@ export const useAppState = () => {
     }
   };
 
-  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter]);
+  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter]);
   useEffect(() => {
     console.log("Updated filters:", filters);
     fetchStats(filters);
@@ -118,6 +120,10 @@ export const useAppState = () => {
       setOrgFilter,
       countryFilter,
       setCountryFilter,
+      fundingSchemeFilter,
+      setFundingSchemeFilter,
+      idFilter,
+      setIdFilter,
       page,
       setPage,
       setSelectedProject,

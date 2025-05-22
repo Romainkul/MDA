@@ -58,7 +58,9 @@ def get_projects(
     status: str = "",
     legalBasis: str = "",
     organization: str = "",
-    country: str = ""
+    country: str = "",
+    fundingScheme: str = "",
+    proj_id: str = "",
 ):
     df: pl.DataFrame = app.state.df
     start = page * limit
@@ -77,11 +79,15 @@ def get_projects(
         sel = sel.filter(pl.col("list_name").list.contains(organization))
     if country:
         sel = sel.filter(pl.col("list_country").list.contains(country))
+    if fundingScheme:
+        sel = sel.filter(pl.col("fundingScheme").list.contains(fundingScheme))
+    if proj_id:
+        sel = sel.filter(pl.col("id") == proj_id)
 
     cols = [
         "id", "title", "status", "startDate", "endDate",
         "ecMaxContribution", "acronym", "legalBasis", "objective",
-        "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath","totalCost","list_isPublishedAs"
+        "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath","totalCost","list_isPublishedAs","fundingScheme"
     ]
     for i in range(1, 7):
         cols += [f"top{i}_feature", f"top{i}_shap"]
