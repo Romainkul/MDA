@@ -151,6 +151,8 @@ def get_filters(request: Request):
         "legalBases": normalize(df["legalBasis"].to_list()),
         "organizations": normalize(df["list_name"].explode().to_list()),
         "countries": normalize(df["list_country"].explode().to_list()),
+        "fundingSchemes": normalize(df["fundingScheme"].explode().to_list()),
+        "ids": normalize(df["id"].to_list()),
     }
 
 

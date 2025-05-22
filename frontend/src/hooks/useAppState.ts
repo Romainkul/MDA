@@ -68,7 +68,9 @@ export const useAppState = () => {
           statuses: ["SIGNED", "CLOSED", "TERMINATED", "UNKNOWN"],
           organizations: data.organizations,
           countries: data.countries,
-          legalBases: data.legalBases
+          legalBases: data.legalBases,
+          fundingSchemes: data.fundingSchemes,
+          ids: data.ids
         });
       });
   };
