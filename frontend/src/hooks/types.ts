@@ -15,7 +15,7 @@ export interface Project {
   explanations: Array<{ feature: string; shap: number }>;
   predicted_label: number;
   predicted_prob: number;
-  totalCost: number | null;
+  totalCost: number | null | undefined;
   publications:{ [type: string]: number };
 }
 
@@ -47,6 +47,7 @@ export interface OrganizationLocation {
   role: string;
   contribution: number;
   activityType: string;
+  orgURL: string;
 }
 
 export interface FilterState {

@@ -16,11 +16,12 @@ import {
   Tr,
   Th,
   Td,
+  Link,
   Avatar,
   Icon,
   HStack,
 } from "@chakra-ui/react";
-import { CheckIcon, CloseIcon } from '@chakra-ui/icons';
+import { CheckIcon, CloseIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import {
   ResponsiveContainer,
   BarChart,
@@ -94,6 +95,15 @@ export default function ProjectDetails({
   const center: [number, number] = orgLocations.length
     ? [orgLocations[0].latitude, orgLocations[0].longitude]
     : [51.505, -0.09];
+  
+  // format date string to YYYY-MM-DD
+  const fmtDate = (iso?: string) => iso ? new Date(iso).toISOString().split('T')[0] : '-';
+
+  // format numbers with two decimals
+  const fmtNum = (num: number | null | undefined): string =>
+    num != null
+      ? num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '-';
 
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={8}>
@@ -115,22 +125,10 @@ export default function ProjectDetails({
             <Text fontWeight="bold">Acronym</Text>
             <Text>{project.acronym}</Text>
           </Box>
-          <Box>
-            <Text fontWeight="bold">Start Date</Text>
-            <Text>{project.startDate}</Text>
-          </Box>
-          <Box>
-            <Text fontWeight="bold">End Date</Text>
-            <Text>{project.endDate}</Text>
-          </Box>
-          <Box>
-            <Text fontWeight="bold">Funding (EC max)</Text>
-            <Text>€{project.ecMaxContribution.toLocaleString()}</Text>
-          </Box>
-          <Box>
-            <Text fontWeight="bold">Total Cost</Text>
-            <Text>€{project.totalCost?.toLocaleString() || '-'}</Text>
-          </Box>
+          <Box><Text fontWeight="bold">Start Date</Text><Text>{fmtDate(project.startDate)}</Text></Box>
+          <Box><Text fontWeight="bold">End Date</Text><Text>{fmtDate(project.endDate)}</Text></Box>
+          <Box><Text fontWeight="bold">Funding (EC max)</Text><Text>€{fmtNum(project.ecMaxContribution)}</Text></Box>
+          <Box><Text fontWeight="bold">Total Cost</Text><Text>€{fmtNum(project.totalCost)}</Text></Box>
           <Box>
             <Text fontWeight="bold">Legal Basis</Text>
             <Text>{project.legalBasis}</Text>
@@ -190,32 +188,37 @@ export default function ProjectDetails({
             </Table>
           </Box>
         )}
-        
+
         <Heading size="md" mb={3}>Participating Organizations</Heading>
         {loadingOrgs ? (
           <Spinner />
         ) : (
           <Table size="sm" variant="simple" mb={6}>
             <Thead><Tr>
-              <Th>Name</Th>
-              <Th>City</Th>
-              <Th>Country</Th>
-              <Th>SME</Th>
-              <Th>Role</Th>
-              <Th isNumeric>Contribution (€)</Th>
-              <Th>Activity Type</Th>
+              <Th whiteSpace="nowrap">Name</Th>
+              <Th whiteSpace="nowrap">City</Th>
+              <Th whiteSpace="nowrap">Country</Th>
+              <Th whiteSpace="nowrap">SME</Th>
+              <Th whiteSpace="nowrap">Role</Th>
+              <Th isNumeric whiteSpace="nowrap">Contribution (€)</Th>
+              <Th whiteSpace="nowrap">Activity Type</Th>
             </Tr></Thead>
             <Tbody>
               {orgLocations.map((o, i) => (
                 <Tr key={i}>
-                  <Td>{o.name}</Td>
-                  <Td>{o.city || '-'}</Td>
-                  <Td>{o.country}</Td>
                   <Td>
-                    {o.sme ? <Icon as={CheckIcon} /> : <Icon as={CloseIcon} />}
+                    {o.orgURL ? (
+                      <Link href={o.orgURL} isExternal>
+                        {o.name} <ExternalLinkIcon mx="2px" />
+                      </Link>
+                    ) : (
+                      <Text>{o.name}</Text>
+                    )}
                   </Td>
+                  <Td whiteSpace="nowrap">{`${o.city || '-'}, ${o.country}`}</Td>
+                  <Td>{o.sme ? <Icon as={CheckIcon} /> : <Icon as={CloseIcon} />}</Td>
                   <Td>{o.role}</Td>
-                  <Td isNumeric>€{o.contribution?.toLocaleString() || '-'}</Td>
+                  <Td isNumeric>€{fmtNum(o.contribution)}</Td>
                   <Td>{o.activityType}</Td>
                 </Tr>
               ))}

@@ -201,6 +201,7 @@ def get_project_organizations(project_id: str):
             pl.col("list_city").explode().alias("city"),
             pl.col("list_SME").explode().alias("sme"),
             pl.col("list_role").explode().alias("role"),
+            pl.col("list_organizationURL").explode().alias("orgURL"),
             pl.col("list_ecContribution").explode().alias("contribution"),
             pl.col("list_activityType").explode().alias("activityType"),
             pl.col("list_country").explode().alias("country"),
@@ -215,7 +216,7 @@ def get_project_organizations(project_id: str):
             pl.col("latlon").list.get(1).cast(pl.Float64).alias("longitude"),
         ])
         .filter(pl.col("name").is_not_null())
-        .select(["name", "city", "sme","role","contribution","activityType","country", "latitude", "longitude"])
+        .select(["name", "city", "sme","role","contribution","activityType","orgURL","country", "latitude", "longitude"])
     )
 
     return orgs_df.to_dicts()
