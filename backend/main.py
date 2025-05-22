@@ -96,6 +96,7 @@ def get_projects(
 
     cols += ["predicted_label", "predicted_prob"]
     sortOrder = True if sortOrder == "desc" else False
+    sortField = sortField if sortField in df.columns else "startDate"
     rows = (
         sel.sort(sortField,descending=sortOrder).slice(start, limit)
            .select(cols)
