@@ -23,16 +23,16 @@ from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM
 from sentence_transformers import CrossEncoder
 
-try:
+#try:
     # Preferred: direct import (works if rag.py is on sys.path)
-    from rag import build_indexes, bm25_search, load_documents
+    #from rag import build_indexes, bm25_search, load_documents
+#except ImportError:
+try:
+    # Next: relative import (works if you're inside a package)
+    from .rag import build_indexes, bm25_search, load_documents
 except ImportError:
-    try:
-        # Next: relative import (works if you're inside a package)
-        from .rag import build_indexes, bm25_search, load_documents
-    except ImportError:
-        # Last: explicit absolute package import
-        from app.rag import build_indexes, bm25_search, load_documents
+    # Last: explicit absolute package import
+   from app.rag import build_indexes, bm25_search, load_documents
 
 from functools import lru_cache
 # ---------------------------------------------------------------------------- #
