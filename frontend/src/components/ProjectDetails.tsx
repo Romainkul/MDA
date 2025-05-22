@@ -129,6 +129,7 @@ export default function ProjectDetails({
           <Box><Text fontWeight="bold">End Date</Text><Text>{fmtDate(project.endDate)}</Text></Box>
           <Box><Text fontWeight="bold">Funding (EC max)</Text><Text>€{fmtNum(project.ecMaxContribution)}</Text></Box>
           <Box><Text fontWeight="bold">Total Cost</Text><Text>€{fmtNum(project.totalCost)}</Text></Box>
+          <Box><Text fontWeight="bold">Funding Scheme</Text><Text>project.fundingScheme</Text></Box>
           <Box>
             <Text fontWeight="bold">Legal Basis</Text>
             <Text>{project.legalBasis}</Text>
@@ -272,7 +273,7 @@ export default function ProjectDetails({
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={shapData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="feature" />
+                <XAxis dataKey="feature" axisLine={false} tick={false} />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="shap" name="SHAP Value">
@@ -285,6 +286,10 @@ export default function ProjectDetails({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            <Text fontSize="xs" color="gray.500" mt={2}>
+              Each bar shows how much that feature pushed the model's prediction. 
+              Positive bars increase the chance of termination; Negative bars decrease it.
+            </Text>
           </>
         ) : (
           <Spinner />

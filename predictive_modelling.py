@@ -7,6 +7,7 @@ import shap
 import matplotlib.pyplot as plt
 import scipy.sparse
 import polars as pl
+import re
 import gcsfs
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -510,21 +511,125 @@ def score(new_df, model_dir="model_artifacts"):
     explainer = shap.Explainer(clf, X_sel, feature_names=feature_names)
     shap_vals = explainer(X_sel)   # returns a ShapleyValues object
 
-    # 6) For each row, pick top-3 absolute contributors
+    # 6) For each row, pick top-6 absolute contributors
     shap_df = pd.DataFrame(shap_vals.values, columns=feature_names, index=df.index)
+
+    # 7) get absolute values
     abs_shap = shap_df.abs()
 
+    # 8) for each row, record the top‐6 feature names by absolute magnitude
     top_feats = abs_shap.apply(lambda row: row.nlargest(6).index.tolist(), axis=1)
-    top_vals  = abs_shap.apply(lambda row: row.nlargest(6).values.tolist(), axis=1)
 
-    df[["top1_feature","top2_feature","top3_feature","top4_feature","top5_feature","top6_feature"]] = pd.DataFrame(
-        top_feats.tolist(), index=df.index
-    )
-    df[["top1_shap","top2_shap","top3_shap","top4_shap","top5_shap","top6_shap"]] = pd.DataFrame(
-        top_vals.tolist(),  index=df.index
-    )
+    # 9) convert that to six separate columns
+    feat_cols = [f"top{i}_feature" for i in range(1,7)]
+    df[feat_cols] = pd.DataFrame(top_feats.tolist(), index=df.index)
+
+    # 10) now build the *true* SHAP values by looking up each name in shap_df
+    #    for each row, shap_df.loc[idx, feat] is the signed value
+    top_vals = [
+        [ shap_df.loc[idx, feat] for feat in feats ]
+        for idx, feats in top_feats.items()
+    ]
+
+    # 11) store them in your six shap‐value columns
+    val_cols = [f"top{i}_shap" for i in range(1,7)]
+    df[val_cols] = pd.DataFrame(top_vals, index=df.index)
 
     return df
+
+def clean_feature_name(raw: str) -> str:
+    """
+    - cat__:   "cat__feature_value"       → "Feature: Value"
+    - num__:   "num__some_count"           → "Some Count"
+    - mlb_:    "mlb_list_activityType__list_activityType_Research"
+                 → "List Activity Type: Research"
+    """
+    if not raw:
+        return ""
+
+    # 1) cat__
+    if raw.startswith("cat__"):
+        s = raw[len("cat__"):]
+        col, val = (s.split("__", 1) + [None])[:2]
+        col_c = col.replace("_", " ").title()
+        if val:
+            val_c = val.replace("_", " ").title()
+            return f"{col_c}: {val_c}"
+        return col_c
+
+    # 2) num__
+    if raw.startswith("num__"):
+        s = raw[len("num__"):]
+        return s.replace("_", " ").replace('n ','Number of ')
+
+    # 3) mlb_
+    if raw.startswith("mlb_"):
+        s = raw[len("mlb_"):]
+        col_part, val_part = (s.split("__", 1) + [None])[:2]
+        # drop leading "list_" on the column
+        if col_part.startswith("list_"):
+            col_inner = col_part[len("list_"):]
+        else:
+            col_inner = col_part
+        col_c = col_inner.replace("_", " ").title()
+        col_c = "List " + col_c
+
+        if val_part:
+            # drop "list_{col_inner}_" or leading "list_"
+            prefix = f"list_{col_inner}_"
+            if val_part.startswith(prefix):
+                val_inner = val_part[len(prefix):]
+            elif val_part.startswith("list_"):
+                val_inner = val_part[len("list_"):]
+            else:
+                val_inner = val_part
+            val_c = val_inner.replace("_", " ").title()
+            return f"{col_c}: {val_c}"
+        return col_c
+
+    # fallback: replace __ → ": ", _ → " "
+    return raw.replace("__", ": ").replace("_", " ").title()
+
+
+def preprocess_feature_names(df: pl.DataFrame) -> pl.DataFrame:
+    transforms = []
+
+    # clean and round top-6 features & shap values
+    for i in range(1, 7):
+        fcol = f"top{i}_feature"
+        scol = f"top{i}_shap"
+
+        if fcol in df.columns:
+            transforms.append(
+                pl.col(fcol)
+                  .map_elements(clean_feature_name, return_dtype=pl.Utf8)
+                  .alias(fcol)
+            )
+        if scol in df.columns:
+            transforms.append(
+                pl.col(scol)
+                  .round(4)
+                  .alias(scol)
+            )
+
+    # round overall predicted probability
+    if "predicted_prob" in df.columns:
+        transforms.append(
+            pl.col("predicted_prob")
+              .round(4)
+              .alias("predicted_prob")
+        )
+
+    # 1) build the full list of embed-columns
+    embed_cols = [f"title_embed_{i}"     for i in range(50)] + \
+                [f"objective_embed_{i}" for i in range(50)]
+
+    # 2) keep only the ones that actually exist in df.columns
+    to_drop = [c for c in embed_cols if c in df.columns]
+
+    # 3) drop them
+    df = df.drop(to_drop)
+    return df.with_columns(transforms)
 
 if __name__ == "__main__":
     # Entry point for training and scoring: loads data from Google Cloud Storage,
@@ -539,5 +644,5 @@ if __name__ == "__main__":
         df = pl.read_parquet(f).to_pandas()
     
     status_prediction_model(df)
-    scored_df = score(df)
-    print(scored_df.head())
+    df_clean = preprocess_feature_names(pl.from_pandas(score(df)))
+    df_clean.head(10)
