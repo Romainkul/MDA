@@ -61,6 +61,8 @@ def get_projects(
     country: str = "",
     fundingScheme: str = "",
     proj_id: str = "",
+    sortOrder: str = "desc",
+    sortField: str = "startDate",
 ):
     df: pl.DataFrame = app.state.df
     start = page * limit
@@ -93,9 +95,9 @@ def get_projects(
         cols += [f"top{i}_feature", f"top{i}_shap"]
 
     cols += ["predicted_label", "predicted_prob"]
-
+    sortOrder = True if sortOrder == "desc" else False
     rows = (
-        sel.slice(start, limit)
+        sel.sort(sortField,descending=sortOrder).slice(start, limit)
            .select(cols)
            .to_dicts()
     )
