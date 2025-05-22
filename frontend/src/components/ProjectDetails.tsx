@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";//React,
+import { useEffect, useState } from "react";
 import {
   Box,
   Flex,
@@ -10,12 +10,17 @@ import {
   Wrap,
   Tag,
   Divider,
-  VStack,
-  HStack,
-  Input,
-  Button,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
   Avatar,
+  Icon,
+  HStack,
 } from "@chakra-ui/react";
+import { CheckIcon, CloseIcon } from '@chakra-ui/icons';
 import {
   ResponsiveContainer,
   BarChart,
@@ -123,6 +128,10 @@ export default function ProjectDetails({
             <Text>€{project.ecMaxContribution.toLocaleString()}</Text>
           </Box>
           <Box>
+            <Text fontWeight="bold">Total Cost</Text>
+            <Text>€{project.totalCost?.toLocaleString() || '-'}</Text>
+          </Box>
+          <Box>
             <Text fontWeight="bold">Legal Basis</Text>
             <Text>{project.legalBasis}</Text>
           </Box>
@@ -160,8 +169,59 @@ export default function ProjectDetails({
         )}
 
         <Divider my={6} />
-
+                {project.publications && Object.keys(project.publications).length > 0 && (
+          <Box mb={6}>
+            <Heading size="md" mb={2}>Publications</Heading>
+            <Table size="sm" variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>Type</Th>
+                  <Th isNumeric>Count</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {Object.entries(project.publications).map(([type, count]) => (
+                  <Tr key={type}>
+                    <Td>{type}</Td>
+                    <Td isNumeric>{count}</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        )}
+        
         <Heading size="md" mb={3}>Participating Organizations</Heading>
+        {loadingOrgs ? (
+          <Spinner />
+        ) : (
+          <Table size="sm" variant="simple" mb={6}>
+            <Thead><Tr>
+              <Th>Name</Th>
+              <Th>City</Th>
+              <Th>Country</Th>
+              <Th>SME</Th>
+              <Th>Role</Th>
+              <Th isNumeric>Contribution (€)</Th>
+              <Th>Activity Type</Th>
+            </Tr></Thead>
+            <Tbody>
+              {orgLocations.map((o, i) => (
+                <Tr key={i}>
+                  <Td>{o.name}</Td>
+                  <Td>{o.city || '-'}</Td>
+                  <Td>{o.country}</Td>
+                  <Td>
+                    {o.sme ? <Icon as={CheckIcon} /> : <Icon as={CloseIcon} />}
+                  </Td>
+                  <Td>{o.role}</Td>
+                  <Td isNumeric>€{o.contribution?.toLocaleString() || '-'}</Td>
+                  <Td>{o.activityType}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
         {loadingOrgs ? (
           <Spinner />
         ) : (

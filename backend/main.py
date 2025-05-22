@@ -81,7 +81,7 @@ def get_projects(
     cols = [
         "id", "title", "status", "startDate", "endDate",
         "ecMaxContribution", "acronym", "legalBasis", "objective",
-        "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath",
+        "frameworkProgramme", "list_euroSciVocTitle", "list_euroSciVocPath","totalCost","list_isPublishedAs"
     ]
     for i in range(1, 7):
         cols += [f"top{i}_feature", f"top{i}_shap"]
@@ -103,6 +103,15 @@ def get_projects(
             if feat is not None and shap is not None:
                 explanations.append({"feature": feat, "shap": shap})
         row["explanations"] = explanations
+        # 2) transform list_publications into a { type: count } map
+        raw_pubs = row.pop("list_publications", None) or []
+        pub_counts: dict[str, int] = {}
+        for entry in raw_pubs:
+            # assuming entry is a string like "paper" or "peer reviewed paper"
+            pub_counts[entry] = pub_counts.get(entry, 0) + 1
+
+        row["publications"] = pub_counts
+
         projects.append(row)
 
     return projects
@@ -189,6 +198,11 @@ def get_project_organizations(project_id: str):
         sel
         .select([
             pl.col("list_name").explode().alias("name"),
+            pl.col("list_city").explode().alias("city"),
+            pl.col("list_SME").explode().alias("sme"),
+            pl.col("list_role").explode().alias("role"),
+            pl.col("list_ecContribution").explode().alias("contribution"),
+            pl.col("list_activityType").explode().alias("activityType"),
             pl.col("list_country").explode().alias("country"),
             pl.col("list_geolocation").explode().alias("geoloc"),
         ])
@@ -201,7 +215,7 @@ def get_project_organizations(project_id: str):
             pl.col("latlon").list.get(1).cast(pl.Float64).alias("longitude"),
         ])
         .filter(pl.col("name").is_not_null())
-        .select(["name", "country", "latitude", "longitude"])
+        .select(["name", "city", "sme","role","contribution","activityType","country", "latitude", "longitude"])
     )
 
     return orgs_df.to_dicts()

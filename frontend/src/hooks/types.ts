@@ -15,6 +15,8 @@ export interface Project {
   explanations: Array<{ feature: string; shap: number }>;
   predicted_label: number;
   predicted_prob: number;
+  totalCost: number | null;
+  publications:{ [type: string]: number };
 }
 
 export interface ProjectDetailsProps {
@@ -40,6 +42,11 @@ export interface OrganizationLocation {
   country: string;
   latitude: number;
   longitude: number;
+  sme: boolean;
+  city: string;
+  role: string;
+  contribution: number;
+  activityType: string;
 }
 
 export interface FilterState {
