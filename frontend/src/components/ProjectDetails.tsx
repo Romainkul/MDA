@@ -196,8 +196,7 @@ export default function ProjectDetails({
           <Table size="sm" variant="simple" mb={6}>
             <Thead><Tr>
               <Th whiteSpace="nowrap">Name</Th>
-              <Th whiteSpace="nowrap">City</Th>
-              <Th whiteSpace="nowrap">Country</Th>
+              <Th whiteSpace="nowrap">Location</Th>
               <Th whiteSpace="nowrap">SME</Th>
               <Th whiteSpace="nowrap">Role</Th>
               <Th isNumeric whiteSpace="nowrap">Contribution (€)</Th>

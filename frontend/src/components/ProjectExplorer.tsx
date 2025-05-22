@@ -19,6 +19,7 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import type { ProjectExplorerProps, Project, ChatMessage } from "../hooks/types";
+import { i } from "framer-motion/client";
 
 interface FilterOptions {
   statuses: string[];
@@ -95,66 +96,64 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
       <Box w={{ base: "100%", md: "70%" }} p={4}>
         <Heading size="sm" mb={2}>Projects</Heading>
         <Flex gap={4} mb={4} flexWrap="wrap">
+          {/* Title search */}
           <Input
             placeholder="Search by title..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            width={{ base: "100%", md: "200px" }}
+            w={{ base: "100%", md: "200px" }}
           />
+          <Input
+            placeholder="Search ID…"
+            value={idFilter}
+            onChange={(e) => { setIdFilter(e.target.value); setPage(0); }}
+            w="100px"
+            isDisabled={loadingFilters}
+          />
+
+          {/* Status dropdown remains */}
           <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Status"}
+            placeholder={loadingFilters ? "Loading…" : "Status"}
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="120px"
+            w="120px"
           >
             {filterOpts.statuses.map((s) => <option key={s} value={s}>{s}</option>)}
           </ChakraSelect>
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Legal Basis"}
+
+          {/* Free-text filters */}
+          <Input
+            placeholder="Search Legal Basis…"
             value={legalFilter}
             onChange={(e) => { setLegalFilter(e.target.value); setPage(0); }}
+            w="150px"
             isDisabled={loadingFilters}
-            width="150px"
-          >
-            {filterOpts.legalBases.map((lb) => <option key={lb} value={lb}>{lb}</option>)}
-          </ChakraSelect>
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Organization"}
+          />
+
+          <Input
+            placeholder="Search Organization…"
             value={orgFilter}
             onChange={(e) => { setOrgFilter(e.target.value); setPage(0); }}
+            w="150px"
             isDisabled={loadingFilters}
-            width="150px"
-          >
-            {filterOpts.organizations.map((o) => <option key={o} value={o}>{o}</option>)}
-          </ChakraSelect>
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Country"}
+          />
+
+          <Input
+            placeholder="Search Country…"
             value={countryFilter}
             onChange={(e) => { setCountryFilter(e.target.value); setPage(0); }}
+            w="120px"
             isDisabled={loadingFilters}
-            width="120px"
-          >
-            {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </ChakraSelect>
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Funding Scheme"}
-            value={countryFilter}
+          />
+
+          <Input
+            placeholder="Search Funding Scheme…"
+            value={fundingSchemeFilter}
             onChange={(e) => { setFundingSchemeFilter(e.target.value); setPage(0); }}
+            w="150px"
             isDisabled={loadingFilters}
-            width="120px"
-          >
-            {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </ChakraSelect>
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "ID"}
-            value={countryFilter}
-            onChange={(e) => { setIdFilter(e.target.value); setPage(0); }}
-            isDisabled={loadingFilters}
-            width="100px"
-          >
-            {filterOpts.countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </ChakraSelect>
+          />
         </Flex>
 
         <Box
