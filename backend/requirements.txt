@@ -19,8 +19,6 @@ langchain==0.3.25
 langchain-huggingface==0.2.0        
 sentence-transformers==2.7.0
 langchain-community==0.3.24
-accelerate==0.29.3 
-sympy==1.12
 
 # Vector store
 faiss-cpu==1.11.0
@@ -29,8 +27,8 @@ faiss-cpu==1.11.0
 whoosh==2.7.4
 
 # Transformers
-transformers==4.51.3
 torch==2.3.0 
+transformers==4.51.3
 torchvision==0.18.0 
 accelerate==0.29.3 
 sympy==1.12

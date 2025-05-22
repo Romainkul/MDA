@@ -57,9 +57,17 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
+# copy in your requirements
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --no-cache-dir -r /tmp/requirements.txt \
- && python3 -m pip install --no-cache-dir fastapi starlette uvicorn
+
+RUN python3 -m pip install --no-cache-dir \
+      # 1) Install PyTorch before anything else so gptqmodel's setup.py can import it
+      torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+    && python3 -m pip install --no-cache-dir \
+      # 2) Now install the rest (including gptqmodel)
+      -r /tmp/requirements.txt \
+    && python3 -m pip install --no-cache-dir fastapi starlette uvicorn
+
 
 # Copy frontend build and backend app
 COPY --from=frontend-builder /app/frontend/dist /app/static
