@@ -72,6 +72,11 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
       .catch(console.error)
       .finally(() => setLoadingFilters(false));
   }, [statusFilter, legalFilter, orgFilter, countryFilter, search]);
+  
+  const fmtNum = (num: number | null | undefined): string =>
+    num != null
+      ? num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '-';
 
 
   return (
@@ -162,7 +167,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     <Td>{p.status}</Td>
                     <Td>{p.id}</Td>
                     <Td whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0, 10)}</Td>
-                    <Td>{p.ecMaxContribution?.toLocaleString()}</Td>
+                    <Td>€{fmtNum(p.ecMaxContribution)}</Td>
                   </Tr>
                 ))}
               </Tbody>
