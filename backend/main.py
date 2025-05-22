@@ -64,6 +64,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+from transformers import AutoConfig
+cfg = AutoConfig.from_pretrained("sentence-transformers/LaBSE")
+print(cfg.model_type)
+
 # Pre‐instantiate embedding model (used by filter/compressor)
 EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model,
     model_kwargs={"trust_remote_code": True})
