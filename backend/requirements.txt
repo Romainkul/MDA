@@ -40,3 +40,6 @@ optimum==1.25.3
 bitsandbytes==0.45.5
 #gptqmodel==2.2.0
 
+HuggingFace
+huggingface_hub
+
