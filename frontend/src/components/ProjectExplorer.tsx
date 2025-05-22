@@ -229,12 +229,13 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     cursor="pointer"
                     _hover={{ bg: "gray.100" }}
                   >
-                    <Td overflow="hidden" textOverflow="ellipsis">{p.title}</Td>
-                    <Td>{p.status}</Td>
-                    <Td>{p.id}</Td>
-                    <Td whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0, 10)}</Td>
-                    <Td>{p.fundingScheme}</Td>
-                    <Td>€{fmtNum(p.ecMaxContribution)}</Td>
+                    <Td w="50%" overflow="hidden" textOverflow="ellipsis">{p.title}</Td>
+                    <Td w="10%">{p.status}</Td>
+                    <Td w="10%">{p.id}</Td>
+                    <Td w="10%" whiteSpace="nowrap">{new Date(p.startDate).toISOString().slice(0,10)}</Td>
+                    <Td w="10%">{p.fundingScheme || '-'}</Td>
+                    <Td w="10%">€{fmtNum(p.ecMaxContribution)}</Td>
+
                   </Tr>
                 ))}
               </Tbody>
