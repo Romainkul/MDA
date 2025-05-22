@@ -77,7 +77,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
       {/* Left Pane: Projects & Filters */}
-      <Box flex={{ base: "none", md: "0 0 900px" }}  width={{ base: "100%", md: "1200px" }}>
+      <Box w={{ base: "100%", md: "70%" }} p={4}>
         <Heading size="sm" mb={2}>Projects</Heading>
         <Flex gap={4} mb={4} flexWrap="wrap">
           <Input
@@ -178,7 +178,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
 
       {/* Right Pane: Assistant */}
       <Box
-        flex={{ base: 1, md: 0.6 }}
+        w={{ base: "100%", md: "30%" }}
         bg="gray.50"
         p={4}
         borderRadius="md"
@@ -189,6 +189,9 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
         <Heading size="sm" mb={2}>
           Assistant
         </Heading>
+        <Text fontSize="xs" color="gray.500" mb={3}>
+          ⚠️ The model may occasionally produce incorrect or misleading answers.
+        </Text>
         <Box flex={1} overflowY="auto" mb={4}>
           <VStack spacing={3} align="stretch">
             {chatHistory.map((msg: ChatMessage, i: number) => (
