@@ -57,8 +57,9 @@ RUN mkdir -p /var/cache/nginx/client_temp \
     chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
 
 ENV HF_HOME=/tmp/hf_cache \
-       TRANSFORMERS_CACHE=/tmp/hf_cache \
-       HF_HUB_CACHE=/tmp/hf_cache
+    TRANSFORMERS_CACHE=/tmp/hf_cache \
+    HF_HUB_CACHE=/tmp/hf_cache
+    
 RUN mkdir -p /tmp/hf_cache
 
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
