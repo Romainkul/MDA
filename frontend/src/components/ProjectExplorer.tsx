@@ -132,7 +132,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             placeholder={`ID (min ${MIN_SEARCH_LEN})`}
             value={idFilter}
             onChange={(e) => handleMinInput(e.target.value, setIdFilter)}
-            w="100px"
+            w="160px"
             isDisabled={loadingFilters}
           />
           <ChakraSelect
