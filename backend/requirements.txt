@@ -29,7 +29,7 @@ whoosh==2.7.4
 
 # Transformers
 torch
-transformers=
+transformers
 torchvision
 accelerate==0.29.3 
 sympy==1.12
