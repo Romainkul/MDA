@@ -93,6 +93,10 @@ export interface ProjectExplorerProps {
   setFundingSchemeFilter: (value: string) => void;
   idFilter: string;
   setIdFilter: (value: string) => void;
+  setSortField: (field: string) => void;
+  sortField: string;
+  setSortOrder : (order: "asc" | "desc") => void;
+  sortOrder : "asc" | "desc";
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   setSelectedProject: (project: Project) => void;

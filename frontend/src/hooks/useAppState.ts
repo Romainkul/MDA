@@ -22,6 +22,8 @@ export const useAppState = () => {
   const [countryFilter, setCountryFilter] = useState('');
   const [fundingSchemeFilter, setFundingSchemeFilter ] = useState('');
   const [idFilter, setIdFilter] = useState('');
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     organization: "",
@@ -45,7 +47,7 @@ export const useAppState = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjects = () => {
-    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&id=${idFilter}`)
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&id=${idFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
       .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
       .catch(console.error);
@@ -95,7 +97,7 @@ export const useAppState = () => {
     }
   };
 
-  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter]);
+  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
   useEffect(() => {
     console.log("Updated filters:", filters);
     fetchStats(filters);
@@ -126,6 +128,10 @@ export const useAppState = () => {
       setFundingSchemeFilter,
       idFilter,
       setIdFilter,
+      setSortField,
+      sortField,
+      setSortOrder,
+      sortOrder,
       page,
       setPage,
       setSelectedProject,

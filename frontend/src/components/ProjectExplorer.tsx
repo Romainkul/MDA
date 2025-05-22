@@ -29,6 +29,12 @@ interface FilterOptions {
   fundingSchemes: string[];
   ids: string[];
 }
+const MIN_SEARCH_LEN = 5;
+
+type SortField = keyof Pick<Project, 'title' | 'status' | 'id' | 'startDate' | 'fundingScheme' | 'ecMaxContribution'>;
+
+type SortOrder = 'asc' | 'desc';
+
 
 const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   projects,
@@ -46,6 +52,10 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   setFundingSchemeFilter,
   idFilter,
   setIdFilter,
+  setSortField,
+  sortField,
+  setSortOrder,
+  sortOrder,
   page,
   setPage,
   setSelectedProject,
@@ -74,8 +84,10 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     if (orgFilter)    params.set("organization", orgFilter);
     if (countryFilter) params.set("country", countryFilter);
     if (search)       params.set("search", search);
-    if (idFilter)    params.set("id", idFilter);
+    if (idFilter.length >= MIN_SEARCH_LEN) params.set("id", idFilter);
     if (fundingSchemeFilter) params.set("fundingScheme", fundingSchemeFilter);
+    params.set("sortField", sortField);
+    params.set("sortOrder", sortOrder);
 
     fetch(`/api/filters?${params.toString()}`)
       .then((res) => res.json())
@@ -88,6 +100,22 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     num != null
       ? num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : '-';
+  
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // toggle using current sortOrder value
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setPage(0);
+  };
+
+  const handleMinInput = (value: string, setter: (v: string) => void) => {
+    setter(value);
+    setPage(0);
+  };
 
 
   return (
@@ -101,15 +129,13 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             width={{ base: "100%", md: "200px" }}
           />
-          <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "ID"}
+          <Input
+            placeholder={`ID (min ${MIN_SEARCH_LEN})`}
             value={idFilter}
-            onChange={(e) => { setIdFilter(e.target.value); setPage(0); }}
+            onChange={(e) => handleMinInput(e.target.value, setIdFilter)}
+            w="100px"
             isDisabled={loadingFilters}
-            width="100px"
-          >
-            {filterOpts.fundingSchemes.map((c) => <option key={c} value={c}>{c}</option>)}
-          </ChakraSelect>
+          />
           <ChakraSelect
             placeholder={loadingFilters ? "Loading..." : "Status"}
             value={statusFilter}
@@ -176,12 +202,28 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     >
               <Thead>
                 <Tr>
-                <Th width="50%" whiteSpace="nowrap">Title</Th>
-                <Th width="10%" whiteSpace="nowrap">Status</Th>
-                <Th width="10%" whiteSpace="nowrap">ID</Th>
-                <Th width="10%" whiteSpace="nowrap">Start Date</Th>
-                <Th width="10%" whiteSpace="nowrap">Funding Scheme</Th>
-                <Th width="10%" whiteSpace="nowrap">Funding</Th>
+              <Thead>
+                <Tr>
+                  <Th w="50%" whiteSpace="nowrap" onClick={() => handleSort('title')} cursor="pointer">
+                    Title{sortField==='title'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                  <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('status')} cursor="pointer">
+                    Status{sortField==='status'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                  <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('id')} cursor="pointer">
+                    ID{sortField==='id'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                  <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('startDate')} cursor="pointer">
+                    Start Date{sortField==='startDate'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                  <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('fundingScheme')} cursor="pointer">
+                    Funding Scheme{sortField==='fundingScheme'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                  <Th w="10%" whiteSpace="nowrap" onClick={() => handleSort('ecMaxContribution')} cursor="pointer">
+                    Funding (€){sortField==='ecMaxContribution'? (sortOrder==='asc'?' ↑':' ↓'):''}
+                  </Th>
+                </Tr>
+              </Thead>
                 </Tr>
               </Thead>
               <Tbody>
