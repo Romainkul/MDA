@@ -99,13 +99,28 @@ export const useAppState = () => {
         body: JSON.stringify({ query: question }),
       });
 
+      // Log the raw response for debugging
+      console.log("RAG API status:", res.status, res.statusText);
+      const text = await res.text();
+      console.log("RAG API raw body:", text);
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || res.statusText);
+        // Try to parse JSON error, or fall back to raw text
+        let errDetail: string;
+        try {
+          const errJson = JSON.parse(text);
+          errDetail = errJson.detail || JSON.stringify(errJson);
+        } catch {
+          errDetail = text;
+        }
+        throw new Error(`API error ${res.status}: ${errDetail}`);
       }
 
-      const data: RagResponse = await res.json();
-      const idList = data.source_ids.join(", ");
+      // Now parse the successful JSON
+      const data: RagResponse = JSON.parse(text);
+      console.log("RAG API parsed:", data);
+
+      const idList = data.source_ids.join(", ") || "none";
       const assistantContent = `${data.answer}
 
   The output was based on the following Project IDs: ${idList}`;
@@ -114,10 +129,14 @@ export const useAppState = () => {
         ...newChat,
         { role: "assistant", content: assistantContent },
       ]);
-    } catch (e) {
+    } catch (err: any) {
+      console.error("askChatbot error:", err);
       setChatHistory([
         ...newChat,
-        { role: "assistant", content: "Something went wrong." },
+        {
+          role: "assistant",
+          content: `Something went wrong: ${err.message}`,
+        },
       ]);
     }
   };

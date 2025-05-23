@@ -541,7 +541,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         df = pl.read_parquet(f)
 
     # lowercase for filtering
-    for col in ("title", "status", "legalBasis"):
+    for col in ("title", "status", "legalBasis","fundingScheme"):
         df = df.with_columns(pl.col(col).str.to_lowercase().alias(f"_{col}_lc"))
 
     # materialize unique filter values
@@ -549,6 +549,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.statuses     = df["_status_lc"].unique().to_list()
     app.state.legal_bases  = df["_legalBasis_lc"].unique().to_list()
     app.state.orgs_list    = df.explode("list_name")["list_name"].unique().to_list()
+    app.state.countries_list = df.explode("list_country")["list_country"].unique().to_list()
     app.state.countries_list = df.explode("list_country")["list_country"].unique().to_list()
 
     yield
@@ -626,7 +627,7 @@ def get_projects(
     if country:
         sel = sel.filter(pl.col("list_country").list.contains(country))
     if fundingScheme:
-        sel = sel.filter(pl.col("fundingScheme").list.contains(fundingScheme))
+        sel = sel.filter(pl.col("_fundingScheme_lc").str.contains(fundingScheme.lower()))
     if proj_id:
         sel = sel.filter(pl.col("id") == proj_id)
 
