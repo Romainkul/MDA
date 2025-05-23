@@ -484,7 +484,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         output_key="answer",
         return_messages=True,
     )
-
+    logger.info("Initializing Indexes")
     # Build or load FAISS & Whoosh once
     vs, ix = await build_indexes(
         settings.parquet_path,
