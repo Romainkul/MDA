@@ -50,14 +50,14 @@ export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
 # 1️⃣ Mount your GCS bucket under /mnt/project
 MOUNT_POINT=/mnt/project
 BUCKET_NAME=mda_eu_project
-mkdir -p ${MOUNT_POINT}
+#mkdir -p ${MOUNT_POINT}
 # allow_other so nginx, uvicorn, etc. (non-root) can write
 gcsfuse --implicit-dirs --allow-other ${BUCKET_NAME} ${MOUNT_POINT}
 
 # 2️⃣ Ensure our four dirs exist
-for d in data vectorstore_index whoosh_index cache; do
-  mkdir -p ${MOUNT_POINT}/$d
-done
+#for d in data vectorstore_index whoosh_index cache; do
+#  mkdir -p ${MOUNT_POINT}/$d
+#done
 
 # 3️⃣ Point HF caches into bucket
 export HF_HOME=${MOUNT_POINT}/cache

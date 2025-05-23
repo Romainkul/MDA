@@ -72,6 +72,12 @@ ENV HF_HOME=/tmp/hf_cache \
 RUN mkdir -p /tmp/hf_cache \
  && chmod 777 /tmp/hf_cache
 
+RUN mkdir -p /mnt/project/data \
+             /mnt/project/vectorstore_index \
+             /mnt/project/whoosh_index \
+             /mnt/project/cache \
+ && chmod -R a+rwx /mnt/project
+
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 # copy in your requirements
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
