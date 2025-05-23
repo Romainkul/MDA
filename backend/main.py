@@ -32,6 +32,7 @@ from whoosh.qparser import MultifieldParser
 from tqdm import tqdm
 import faiss
 import torch
+import tempfile
 
 from functools import lru_cache
 
@@ -434,7 +435,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Create your text-generation pipeline on CPU
     gen_pipe = pipeline(
-        "text-generation",
+        "text2text-generationr",#"text-generation",
         model=llm_model,
         tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),#, use_fast=False),
         device=-1,              # force CPU
