@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+import traceback
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
     assistant_role: str = (
         "You are a concise, factual assistant. Cite Document [ID] for each claim."
     )
-    skip_warmup: bool = False
+    skip_warmup: bool = True
     allowed_origins: List[str] = ["*"]
 
     class Config:
@@ -422,9 +423,8 @@ class HybridRetriever(BaseRetriever):
             self._aget_relevant_documents(query)
         )
 
-#os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Romain\OneDrive - KU Leuven\focal-pager-460414-e9-45369b738be0.json"
 # ---------------------------------------------------------------------------- #
-#                               Single Lifespan                                 #
+#                              Lifespan                                        #
 # ---------------------------------------------------------------------------- #
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -433,27 +433,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing RAG components…")
 
     # Compressor pipeline to de‐duplicate via embeddings
+    logger.info("Initializing Document Compressor")
     compressor = DocumentCompressorPipeline(
         transformers=[EmbeddingsRedundantFilter(embeddings=EMBEDDING)]
     )
 
     # Cross‐encoder ranker
+    logger.info("Initializing Cross-Encoder")
     cross_encoder = CrossEncoder(settings.cross_encoder_model)
 
-    # Causal LLM pipeline
-    #llm_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
-    #gen_pipe = pipeline(
-    #    "text-generation",
-    #    model=llm_model,
-    #    tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
-    #    max_new_tokens=256,
-    #    do_sample=True,
-    #    temperature=0.7,
-    #)
-    #llm = HuggingFacePipeline(pipeline=gen_pipe)
-    # Load full FP32 model
-    #full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    # Seq2seq pipeline
+    logger.info("Initializing Pipeline")
     full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
+    
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
         full_model,
@@ -463,9 +455,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Create your text-generation pipeline on CPU
     gen_pipe = pipeline(
-        "text2text-generation",#"text-generation",
+        "text2text-generation",
         model=llm_model,
-        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),#, use_fast=False),
+        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
         device=-1,              # force CPU
         max_new_tokens=256,
         do_sample=True,
@@ -475,6 +467,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
     # Conversational memory
+    logger.info("Initializing Conversation Memory")
     memory = ConversationBufferWindowMemory(
         memory_key="chat_history",
         k=5,
@@ -492,9 +485,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.chunk_overlap,
         None,
     )
-
+    logger.info("Initializing Hybrid Retriever")
     retriever = HybridRetriever(vs=vs, ix=ix, compressor=compressor, cross_encoder=cross_encoder)
-
+    
     prompt = PromptTemplate.from_template(
         f"{settings.assistant_role}\n\n"
         "Context (up to 2,000 tokens, with document IDs):\n"
@@ -502,7 +495,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Q: {question}\n"
         "A: Provide your answer."
     )
-    
+
+    logger.info("Initializing Retrieval Chain")
     app.state.rag_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=retriever,
@@ -565,19 +559,17 @@ def rag_chain_depender(app: FastAPI = Depends(lambda: app)) -> Any:
         raise HTTPException(status_code=500, detail="RAG chain not initialized")
     return chain
 
-import traceback
-from fastapi import HTTPException
-
 @app.post("/api/rag", response_model=RAGResponse)
 async def ask_rag(
     req: RAGRequest,
     rag_chain = Depends(rag_chain_depender)
 ):
     try:
-        result = await rag_chain.acall({"question": req.query})
+        result = await rag_chain.ainvoke({"question": req.query})
         # make sure it really is a dict
         if not isinstance(result, dict):
-            raise ValueError(f"Expected dict from chain, got {type(result)}")
+            result2 = await rag_chain.acall({"question": req.query})
+            raise ValueError(f"Expected dict from chain, got {type(result)} and acall(): {result2} with type {type(result2)}")
         answer = result.get("answer")
         docs   = result.get("source_documents", [])
         sources = [d.metadata.get("id","") for d in docs]
