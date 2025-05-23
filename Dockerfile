@@ -61,7 +61,8 @@ ENV HF_HOME=/tmp/hf_cache \
     HF_HUB_CACHE=/tmp/hf_cache \
     XDG_CACHE_HOME=/tmp/hf_cache
 
-RUN mkdir -p /tmp/hf_cache
+RUN mkdir -p /tmp/hf_cache \
+ && chmod 777 /tmp/hf_cache
 
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 # copy in your requirements
