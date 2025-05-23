@@ -423,11 +423,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #)
     #llm = HuggingFacePipeline(pipeline=gen_pipe)
     # Load full FP32 model
-    llm_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
 
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
-        llm_model,
+        full_model,
         {torch.nn.Linear},
         dtype=torch.qint8
     )
@@ -534,7 +534,7 @@ def rag_chain_depender(app: FastAPI = Depends(lambda: app)) -> Any:
         raise HTTPException(status_code=500, detail="RAG chain not initialized")
     return chain
 
-@app.post("/rag", response_model=RAGResponse)
+@app.post("/api/rag", response_model=RAGResponse)
 async def ask_rag(
     req: RAGRequest,
     rag_chain = Depends(rag_chain_depender)

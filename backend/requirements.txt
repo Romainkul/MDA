@@ -46,4 +46,5 @@ bitsandbytes==0.45.5
 hf_xet
 HuggingFace
 huggingface_hub
+huggingface_hub[hf_xet]
 
