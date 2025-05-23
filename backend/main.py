@@ -436,7 +436,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     gen_pipe = pipeline(
         "text-generation",
         model=llm_model,
-        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model, use_fast=False),
         device=-1,              # force CPU
         max_new_tokens=256,
         do_sample=True,
