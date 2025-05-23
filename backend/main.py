@@ -31,6 +31,7 @@ from whoosh.analysis import StemmingAnalyzer
 from whoosh.qparser import MultifieldParser
 from tqdm import tqdm
 import faiss
+import torch
 
 from functools import lru_cache
 
@@ -48,7 +49,7 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
@@ -411,15 +412,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     cross_encoder = CrossEncoder(settings.cross_encoder_model)
 
     # Causal LLM pipeline
+    #llm_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    #gen_pipe = pipeline(
+    #    "text-generation",
+    #    model=llm_model,
+    #    tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+    #    max_new_tokens=256,
+    #    do_sample=True,
+    #    temperature=0.7,
+    #)
+    #llm = HuggingFacePipeline(pipeline=gen_pipe)
+    # Load full FP32 model
     llm_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+
+    # Apply dynamic quantization to all Linear layers
+    llm_model = torch.quantization.quantize_dynamic(
+        llm_model,
+        {torch.nn.Linear},
+        dtype=torch.qint8
+    )
+
+    # Create your text-generation pipeline on CPU
     gen_pipe = pipeline(
         "text-generation",
         model=llm_model,
         tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+        device=-1,              # force CPU
         max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
     )
+    # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
     # Conversational memory
