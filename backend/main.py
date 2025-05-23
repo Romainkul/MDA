@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     # RAG parameters
     chunk_size:    int = 750
     chunk_overlap: int = 100
-    hybrid_k:      int = 50
+    hybrid_k:      int = 5
     assistant_role: str = (
         "You are a concise, factual assistant. Cite Document [ID] for each claim."
     )
@@ -66,24 +66,6 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 settings = Settings()
-
-#from transformers import AutoTokenizer, AutoConfig
-# 1) Load the tokenizer yourself
-#tokenizer = AutoTokenizer.from_pretrained(
-#    "sentence-transformers/LaBSE",
-#    trust_remote_code=True,
-#    subfolder="old_models/LaBSE/0_Transformer"
-#)
-
-# 2) Create embeddings, passing only model_kwargs
-#EMBEDDING = HuggingFaceEmbeddings(
-#    model_name="sentence-transformers/LaBSE",
-#    tokenizer=tokenizer,                       # ← your custom tokenizer
-#    model_kwargs={
-#        "trust_remote_code": True,
-#        "subfolder": "old_models/LaBSE/0_Transformer"
-#    },
-#)
 
 # Pre‐instantiate embedding model (used by filter/compressor)
 EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model,
