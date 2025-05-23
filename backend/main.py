@@ -574,6 +574,8 @@ async def ask_rag(
 ):
     try:
         result = await rag_chain.ainvoke({"question": req.query})
+        logger.info(f"Print result {result}")
+        result = await rag_chain.ainvoke({"query": req.query})
         # make sure it really is a dict
         if not isinstance(result, dict):
             result2 = await rag_chain.acall({"question": req.query})
