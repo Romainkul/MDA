@@ -44,9 +44,9 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     # Parquet + Whoosh/FAISS
-    parquet_path: str = "gs://mda_eu_project/data/consolidated_clean_pred.parquet"
-    whoosh_dir:    str = "gs://mda_eu_project/whoosh_index"
-    vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
+    parquet_path: str = "/mnt/project/data/consolidated_clean_pred.parquet"
+    whoosh_dir:    str = "/mnt/project/whoosh_index"
+    vectorstore_path: str = "/mnt/project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
     llm_model:           str = "google/mt5-large"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"

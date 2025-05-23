@@ -20,11 +20,19 @@ FROM python:3.11-slim as runtime
 # Install nginx
 # Install OS deps
 USER root
+USER root
 RUN apt-get update && \
-    apt-get install -y nginx python3-pip && \
-    rm -rf /var/lib/apt/lists/* &&\
-    rm -f /etc/nginx/sites-enabled/default \
-   && rm -f /etc/nginx/conf.d/default.conf 
+    apt-get install -y nginx python3-pip curl gnupg lsb-release && \
+    export GCSFUSE_REPO=gcsfuse-$(lsb_release -c -s) && \
+    echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" \
+      | tee /etc/apt/sources.list.d/gcsfuse.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+      | apt-key add - && \
+    apt-get update && \
+    apt-get install -y gcsfuse && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -f /etc/nginx/sites-enabled/default && \
+    rm -f /etc/nginx/conf.d/default.conf
 
 RUN mkdir -p \
       /var/cache/nginx/client_temp \
