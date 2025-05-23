@@ -22,7 +22,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 
-from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM
+from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM, AutoModelForSeq2SeqLM
 from sentence_transformers import CrossEncoder
 
 from whoosh import index
@@ -423,8 +423,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #)
     #llm = HuggingFacePipeline(pipeline=gen_pipe)
     # Load full FP32 model
-    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
-
+    #full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
         full_model,
