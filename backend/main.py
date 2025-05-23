@@ -442,6 +442,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing Cross-Encoder")
     cross_encoder = CrossEncoder(settings.cross_encoder_model)
 
+    # Apply dynamic quantization to speed up CPU inference
+    cross_encoder.model = torch.quantization.quantize_dynamic(
+        cross_encoder.model,
+        {torch.nn.Linear},
+        dtype=torch.qint8,
+    )
+    logger.info("Cross-Encoder quantized")
+
     # Seq2seq pipeline
     logger.info("Initializing Pipeline")
     full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
