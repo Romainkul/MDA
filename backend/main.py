@@ -583,15 +583,30 @@ def rag_chain_depender(app: FastAPI = Depends(lambda: app)) -> Any:
         raise HTTPException(status_code=500, detail="RAG chain not initialized")
     return chain
 
+import traceback
+from fastapi import HTTPException
+
 @app.post("/api/rag", response_model=RAGResponse)
 async def ask_rag(
     req: RAGRequest,
     rag_chain = Depends(rag_chain_depender)
 ):
-    result = await rag_chain.ainvoke({"question": req.query})
-    sources = [doc.metadata.get("id", "") for doc in result.get("source_documents", [])]
-    return RAGResponse(answer=result["answer"], source_ids=sources)
+    try:
+        result = await rag_chain.acall({"question": req.query})
+        # make sure it really is a dict
+        if not isinstance(result, dict):
+            raise ValueError(f"Expected dict from chain, got {type(result)}")
+        answer = result.get("answer")
+        docs   = result.get("source_documents", [])
+        sources = [d.metadata.get("id","") for d in docs]
+        return RAGResponse(answer=answer, source_ids=sources)
 
+    except Exception as e:
+        # print full traceback to your container logs
+        traceback.print_exc()
+        # return a proper JSON 500
+        raise HTTPException(status_code=500, detail=str(e))
+    
 # ---------------------------------------------------------------------------- #
 #                                  Data Endpoints                               #
 # ---------------------------------------------------------------------------- #
