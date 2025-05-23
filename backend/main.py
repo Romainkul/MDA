@@ -250,31 +250,43 @@ async def bm25_search(ix: index.Index, query: str, k: int) -> List[Document]:
     return await run_in_threadpool(_search)
 
 # === Helper: build or load FAISS with mmap ===
+import pickle
 async def build_or_load_faiss(
     chunks: List[Document],
     vectorstore_path: str,
     batch_size: int = 15000
 ) -> FAISS:
-    faiss_index_file = os.path.join(vectorstore_path, "index.faiss")
-    # If on-disk exists: memory-map the FAISS index and load metadata separately
-    if os.path.exists(faiss_index_file):
-        logger.info("Memory-mapping existing FAISS index...")
-        mmap_idx = faiss.read_index(faiss_index_file, faiss.IO_FLAG_MMAP)
-        # Manually load metadata (docstore and index_to_docstore) without loading the index
-        import pickle
-        for meta_file in ["faiss.pkl", "index.pkl"]:
-            meta_path = os.path.join(vectorstore_path, meta_file)
-            if os.path.exists(meta_path):
-                with open(meta_path, "rb") as f:
-                    saved = pickle.load(f)
-                break
-        else:
-            raise FileNotFoundError(
-                f"Could not find FAISS metadata pickle in {vectorstore_path}"
-            )
-                # extract metadata
+    """
+    Always uses GCS. Expects 'index.faiss' and 'index.pkl' under vectorstore_path.
+    Reconstructs the FAISS store using your provided logic.
+    """
+    assert vectorstore_path.startswith("gs://")
+    fs = gcsfs.GCSFileSystem()
+
+    base = vectorstore_path.rstrip("/")
+    uri_index = f"{base}/index.faiss"
+    uri_meta  = f"{base}/index.pkl"
+
+    local_index = "/tmp/index.faiss"
+    local_meta  = "/tmp/index.pkl"
+
+    # 1) If existing index + metadata on GCS → load
+    if fs.exists(uri_index) and fs.exists(uri_meta):
+        logger.info("Found existing FAISS index on GCS; loading…")
+        os.makedirs(os.path.dirname(local_index), exist_ok=True)
+        fs.get(uri_index, local_index, recursive=False)
+        fs.get(uri_meta,  local_meta,  recursive=False)
+
+        # Memory-map
+        mmap_idx = faiss.read_index(local_index, faiss.IO_FLAG_MMAP)
+
+        # Load metadata
+        with open(local_meta, "rb") as f:
+            saved = pickle.load(f)
+
+        # extract metadata
         if isinstance(saved, tuple):
-            # Handle metadata tuple of length 2 or 3
+            # Handle tuple of length 2 or 3
             if len(saved) == 3:
                 _, docstore, index_to_docstore = saved
             elif len(saved) == 2:
@@ -282,23 +294,26 @@ async def build_or_load_faiss(
             else:
                 raise ValueError(f"Unexpected metadata tuple length: {len(saved)}")
         else:
-            if hasattr(saved, 'docstore'):
+            # saved is an object with attributes
+            if hasattr(saved, "docstore"):
                 docstore = saved.docstore
-            elif hasattr(saved, '_docstore'):
+            elif hasattr(saved, "_docstore"):
                 docstore = saved._docstore
             else:
                 raise AttributeError("Could not find docstore in FAISS metadata")
-            if hasattr(saved, 'index_to_docstore'):
+
+            if hasattr(saved, "index_to_docstore"):
                 index_to_docstore = saved.index_to_docstore
-            elif hasattr(saved, '_index_to_docstore'):
+            elif hasattr(saved, "_index_to_docstore"):
                 index_to_docstore = saved._index_to_docstore
-            elif hasattr(saved, '_faiss_index_to_docstore'):
+            elif hasattr(saved, "_faiss_index_to_docstore"):
                 index_to_docstore = saved._faiss_index_to_docstore
             else:
                 raise AttributeError("Could not find index_to_docstore in FAISS metadata")
+
         # reconstruct FAISS wrapper
         vs = FAISS(
-            embedding_function=EMBEDDING,
+            embedding_function=EMBEDDING,   # your embedding function
             index=mmap_idx,
             docstore=docstore,
             index_to_docstore_id=index_to_docstore,
@@ -306,24 +321,55 @@ async def build_or_load_faiss(
         return vs
 
     # 2) Else: build from scratch in batches
+    # parse bucket & prefix
+    _, rest = vectorstore_path.split("://", 1)
+    bucket, *path_parts = rest.split("/", 1)
+    prefix = path_parts[0] if path_parts else ""
+    
+    # helper to upload entire local dir to GCS
+    def upload_dir(local_dir: str):
+        for root, _, files in os.walk(local_dir):
+            for fname in files:
+                local_path = os.path.join(root, fname)
+                # construct the corresponding GCS path
+                rel_path = os.path.relpath(local_path, local_dir)
+                gcs_path = f"gs://{bucket}/{prefix}/{rel_path}"
+                fs.makedirs(os.path.dirname(gcs_path), exist_ok=True)
+                fs.put(local_path, gcs_path)
+    
+    # temporary local staging area
+    local_store = "/tmp/faiss_store"
+    os.makedirs(local_store, exist_ok=True)
+    
+    # 2) Else: build from scratch in batches
     logger.info(f"Building FAISS index in batches of {batch_size}…")
     vs: Optional[FAISS] = None
+    
     for i in tqdm(range(0, len(chunks), batch_size),
                   desc="Building FAISS index",
                   unit="batch"):
         batch = chunks[i : i + batch_size]
-
+    
         if vs is None:
             vs = FAISS.from_documents(batch, EMBEDDING)
         else:
             vs.add_documents(batch)
-
+    
         # periodic save every 5 batches
         if (i // batch_size) % 5 == 0:
-            vs.save_local(vectorstore_path)
-
-        logger.info(f"  • Saved batch up to document {i + len(batch)} / {len(chunks)}")
+            # save into local_store
+            vs.save_local(local_store)
+            # push local_store → GCS
+            upload_dir(local_store)
+            logger.info(f"  • Saved batch up to document {i + len(batch)} / {len(chunks)}")
+    
     assert vs is not None, "No documents to index!"
+    
+    # final save at end
+    vs.save_local(local_store)
+    upload_dir(local_store)
+    logger.info("Finished building index and uploaded to GCS.")
+    
     return vs
 
 # === Index Builder ===
