@@ -34,7 +34,8 @@ whoosh==2.7.4
 torch
 transformers
 torchvision
-accelerate==0.29.3 
+accelerate
+#==0.29.3 
 sympy==1.12
 peft
 #==0.11.1
