@@ -36,7 +36,8 @@ transformers
 torchvision
 accelerate==0.29.3 
 sympy==1.12
-peft==0.11.1
+peft
+#==0.11.1
 
 aiofiles==24.1.0
 optimum==1.25.3
