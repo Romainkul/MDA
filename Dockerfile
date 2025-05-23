@@ -23,13 +23,6 @@ USER root
 USER root
 RUN apt-get update && \
     apt-get install -y nginx python3-pip curl gnupg lsb-release && \
-    export GCSFUSE_REPO=gcsfuse-$(lsb_release -c -s) && \
-    echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" \
-      | tee /etc/apt/sources.list.d/gcsfuse.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-      | apt-key add - && \
-    apt-get update && \
-    apt-get install -y gcsfuse && \
     rm -rf /var/lib/apt/lists/* && \
     rm -f /etc/nginx/sites-enabled/default && \
     rm -f /etc/nginx/conf.d/default.conf
@@ -71,12 +64,6 @@ ENV HF_HOME=/tmp/hf_cache \
 
 RUN mkdir -p /tmp/hf_cache \
  && chmod 777 /tmp/hf_cache
-
-RUN mkdir -p /mnt/project/data \
-             /mnt/project/vectorstore_index \
-             /mnt/project/whoosh_index \
-             /mnt/project/cache \
- && chmod -R a+rwx /mnt/project
 
 # Install Python deps from requirements (ensures numpy/pandas compatibility), then ASGI
 # copy in your requirements
