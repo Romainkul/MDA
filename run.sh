@@ -52,7 +52,12 @@ MOUNT_POINT=/mnt/project
 BUCKET_NAME=mda_eu_project
 #mkdir -p ${MOUNT_POINT}
 # allow_other so nginx, uvicorn, etc. (non-root) can write
-gcsfuse --implicit-dirs --allow-other ${BUCKET_NAME} ${MOUNT_POINT}
+gcsfuse \
+  --implicit-dirs \
+  --file-mode=777 \
+  --dir-mode=777 \
+  ${BUCKET_NAME} \
+  "${MOUNT_POINT}"
 
 # 2️⃣ Ensure our four dirs exist
 #for d in data vectorstore_index whoosh_index cache; do
