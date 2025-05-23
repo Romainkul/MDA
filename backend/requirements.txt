@@ -32,6 +32,7 @@ whoosh==2.7.4
 
 # Transformers
 torch>=2.6.0
+blobfile>=1.5.0
 tiktoken>=0.4.0
 transformers
 torchvision
