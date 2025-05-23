@@ -78,10 +78,17 @@ export const useAppState = () => {
         });
       });
   };
+  interface RagResponse {
+    answer: string;
+    source_ids: string[];
+  }
 
   const askChatbot = async () => {
     if (!question.trim()) return;
-    const newChat: ChatMessage[] = [...chatHistory, { role: "user", content: question }];
+    const newChat: ChatMessage[] = [
+      ...chatHistory,
+      { role: "user", content: question },
+    ];
     setChatHistory(newChat);
     setQuestion("");
 
@@ -89,15 +96,32 @@ export const useAppState = () => {
       const res = await fetch("/api/rag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: question })
+        body: JSON.stringify({ query: question }),
       });
 
-      const data: { answer: string } = await res.json();
-      setChatHistory([...newChat, { role: "assistant", content: data.answer }]);
-    } catch {
-      setChatHistory([...newChat, { role: "assistant", content: "Something went wrong." }]);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || res.statusText);
+      }
+
+      const data: RagResponse = await res.json();
+      const idList = data.source_ids.join(", ");
+      const assistantContent = `${data.answer}
+
+  The output was based on the following Project IDs: ${idList}`;
+
+      setChatHistory([
+        ...newChat,
+        { role: "assistant", content: assistantContent },
+      ]);
+    } catch (e) {
+      setChatHistory([
+        ...newChat,
+        { role: "assistant", content: "Something went wrong." },
+      ]);
     }
   };
+
 
   useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
   useEffect(() => {

@@ -510,6 +510,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.chunk_overlap,
         None,
     )
+
     retriever = HybridRetriever(vs=vs, ix=ix, compressor=compressor, cross_encoder=cross_encoder)
 
     prompt = PromptTemplate.from_template(
@@ -519,7 +520,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Q: {question}\n"
         "A: Provide your answer."
     )
-
+    
     app.state.rag_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=retriever,
@@ -568,7 +569,7 @@ app.add_middleware(
 #                                 RAG Endpoint                                  #
 # ---------------------------------------------------------------------------- #
 class RAGRequest(BaseModel):
-    session_id: Optional[str]
+    session_id: Optional[str] = None
     query: str
 
 class RAGResponse(BaseModel):
