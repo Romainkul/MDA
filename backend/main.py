@@ -691,10 +691,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     prompt = PromptTemplate.from_template(
         f"{settings.assistant_role}\n\n"
         "{context}\n"
-        "Now answer the user’s question thoroughly:"
+        "Now answer the user's question thoroughly:"
         "Question: {question}\n"
         "Your answer should: \n"
-        "1. Be at least **4–6 sentences** long \n"
+        "1. Be at least **4-6 sentences** long \n"
         "2. Explain concepts clearly in full sentences \n"  
         "3. Cite any document you draw on by including its ID in [brackets] inline \n"
         "4. Provide any high-level conclusions or recommendations at the end \n"
@@ -773,8 +773,10 @@ async def ask_rag(
     req: RAGRequest,
     rag_chain = Depends(rag_chain_depender)
 ):
+    logger.info("Starting to answer")
     try:
         result = await rag_chain.ainvoke({"question": req.query})
+        logger.info("Results retrieved")
         if not isinstance(result, dict):
             result2 = await rag_chain.acall({"question": req.query})
             raise ValueError(f"Expected dict from chain, got {type(result)} and acall(): {result2} with type {type(result2)}")
@@ -941,7 +943,7 @@ def get_stats(request: Request):
 @app.get("/api/project/{project_id}/organizations")
 def get_project_organizations(project_id: str):
     df = app.state.df
-    sel = df.filter(pl.col("id")==project_id)
+    sel = df.filter(pl.col("id")==int(project_id))
     if sel.is_empty():
         raise HTTPException(status_code=404, detail="Project not found")
 

@@ -298,7 +298,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
           </Box>
           <HStack>
             <Input
-              placeholder="Ask something..."
+              placeholder="Ask something…"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
@@ -308,13 +308,17 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                 }
               }}
               isDisabled={loading}
+              size="md"          // ← make the input a touch taller
             />
             <Button
               onClick={askChatbot}
               colorScheme="blue"
               aria-label="Ask the chatbot"
               isLoading={loading}
-              loadingText="Waiting..."
+              loadingText="Waiting…"
+              size="md"       
+              px={6}             
+              py={4}             
             >
               Send
             </Button>
