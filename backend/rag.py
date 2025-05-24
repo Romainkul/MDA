@@ -34,6 +34,48 @@ from tqdm import tqdm
 import faiss
 
 from functools import lru_cache
+from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+import traceback
+from starlette.concurrency import run_in_threadpool
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional, AsyncGenerator, Tuple
+
+import os
+import logging
+import aiofiles
+import polars as pl
+import zipfile
+import gcsfs
+
+from langchain.schema import Document,BaseRetriever
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain.retrievers.document_compressors import DocumentCompressorPipeline
+from langchain_community.document_transformers import EmbeddingsRedundantFilter
+from langchain.memory import ConversationBufferWindowMemory
+from langchain.chains import ConversationalRetrievalChain
+from langchain.prompts import PromptTemplate
+from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
+
+from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM, AutoModelForSeq2SeqLM, T5Tokenizer,T5ForConditionalGeneration
+from sentence_transformers import CrossEncoder
+
+from whoosh import index
+from whoosh.fields import Schema, TEXT, ID
+from whoosh.analysis import StemmingAnalyzer
+from whoosh.qparser import MultifieldParser
+import pickle
+from pydantic import PrivateAttr
+from tqdm import tqdm
+import faiss
+import torch
+import tempfile
+import shutil
+
+from functools import lru_cache
 
 # === Logging ===
 logging.basicConfig(level=logging.INFO)
@@ -46,16 +88,16 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "google/flan-t5-base"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
     chunk_overlap: int = 100
-    hybrid_k:      int = 50
+    hybrid_k:      int = 2
     assistant_role: str = (
-        "You are a concise, factual assistant. Cite Document [ID] for each claim."
+        "You are a knowledgeable project analyst.  You have access to the following retrieved document snippets."
     )
-    skip_warmup: bool = False
+    skip_warmup: bool = True
     allowed_origins: List[str] = ["*"]
 
     class Config:
@@ -66,50 +108,81 @@ settings = Settings()
 # === Global Embeddings & Cache ===
 EMBEDDING = HuggingFaceEmbeddings(model_name=settings.embedding_model)
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=128)
 def embed_query_cached(query: str) -> List[float]:
     """Cache embedding vectors for queries."""
     return EMBEDDING.embed_query(query.strip().lower())
 
 # === Whoosh Cache & Builder ===
-_WHOOSH_CACHE: Dict[str, index.Index] = {}
-
 async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Index:
-    key = whoosh_dir
+    """
+    If gs://.../whoosh_index.zip exists, download & extract it once.
+    Otherwise build locally from docs and upload the ZIP back to GCS.
+    """
     fs = gcsfs.GCSFileSystem()
-    local_dir = key
-    is_gcs = key.startswith("gs://")
-    try:
-        # stage local copy for GCS
-        if is_gcs:
-            local_dir = "/tmp/whoosh_index"
-            if not os.path.exists(local_dir):
-                if await run_in_threadpool(fs.exists, key):
-                    await run_in_threadpool(fs.get, key, local_dir, recursive=True)
-                else:
-                    os.makedirs(local_dir, exist_ok=True)
-        # build once
-        if key not in _WHOOSH_CACHE:
-            os.makedirs(local_dir, exist_ok=True)
-            schema = Schema(
-                id=ID(stored=True, unique=True),
-                content=TEXT(analyzer=StemmingAnalyzer()),
+    is_gcs = whoosh_dir.startswith("gs://")
+    zip_uri = whoosh_dir.rstrip("/") + ".zip"
+
+    local_zip = "/tmp/whoosh_index.zip"
+    local_dir = "/tmp/whoosh_index"
+
+    # Clean slate
+    if os.path.exists(local_dir):
+        shutil.rmtree(local_dir)
+    os.makedirs(local_dir, exist_ok=True)
+
+    # 1️⃣ Try downloading the ZIP if it exists on GCS
+    if is_gcs and await run_in_threadpool(fs.exists, zip_uri):
+        logger.info("Found whoosh_index.zip on GCS; downloading…")
+        await run_in_threadpool(fs.get, zip_uri, local_zip)
+        # Extract all files (flat) into local_dir
+        with zipfile.ZipFile(local_zip, "r") as zf:
+            for member in zf.infolist():
+                if member.is_dir():
+                    continue
+                filename = os.path.basename(member.filename)
+                if not filename:
+                    continue
+                target = os.path.join(local_dir, filename)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with zf.open(member) as src, open(target, "wb") as dst:
+                    dst.write(src.read())
+        logger.info("Whoosh index extracted from ZIP.")
+    else:
+        logger.info("No whoosh_index.zip found; building index from docs.")
+
+        # Define the schema with stored content
+        schema = Schema(
+            id=ID(stored=True, unique=True),
+            content=TEXT(stored=True, analyzer=StemmingAnalyzer()),
+        )
+
+        # Create the index
+        ix = index.create_in(local_dir, schema)
+        writer = ix.writer()
+        for doc in docs:
+            writer.add_document(
+                id=doc.metadata.get("id", ""),
+                content=doc.page_content,
             )
-            ix = index.create_in(local_dir, schema)
-            with ix.writer() as writer:
-                for doc in docs:
-                    writer.add_document(
-                        id=doc.metadata.get("id", ""),
-                        content=doc.page_content,
-                    )
-            # push back to GCS atomically
-            if is_gcs:
-                await run_in_threadpool(fs.put, local_dir, key, recursive=True)
-            _WHOOSH_CACHE[key] = ix
-        return _WHOOSH_CACHE[key]
-    except Exception as e:
-        logger.error(f"Failed to build Whoosh index: {e}")
-        raise
+        writer.commit()
+        logger.info("Whoosh index built locally.")
+
+        # Upload the ZIP back to GCS
+        if is_gcs:
+            logger.info("Zipping and uploading new whoosh_index.zip to GCS…")
+            with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(local_dir):
+                    for fname in files:
+                        full = os.path.join(root, fname)
+                        arc = os.path.relpath(full, local_dir)
+                        zf.write(full, arc)
+            await run_in_threadpool(fs.put, local_zip, zip_uri)
+            logger.info("Uploaded whoosh_index.zip to GCS.")
+
+    # 2️⃣ Finally open the index and return it
+    ix = index.open_dir(local_dir)
+    return ix
 
 # === Document Loader ===
 async def load_documents(
@@ -117,7 +190,8 @@ async def load_documents(
     sample_size: Optional[int] = None
 ) -> List[Document]:
     """
-    Load a Parquet file from local or GCS, convert to a list of Documents.
+    Load project data from a Parquet file (local path or GCS URI),
+    assemble metadata context for each row, and return as Document objects.
     """
     def _read_local(p: str, n: Optional[int]):
         # streaming scan keeps memory low
@@ -228,80 +302,118 @@ async def bm25_search(ix: index.Index, query: str, k: int) -> List[Document]:
 
 # === Helper: build or load FAISS with mmap ===
 async def build_or_load_faiss(
-    chunks: List[Document],
+    docs: List[Document],
     vectorstore_path: str,
     batch_size: int = 15000
 ) -> FAISS:
-    faiss_index_file = os.path.join(vectorstore_path, "index.faiss")
-    # If on-disk exists: memory-map the FAISS index and load metadata separately
-    if os.path.exists(faiss_index_file):
-        logger.info("Memory-mapping existing FAISS index...")
-        mmap_idx = faiss.read_index(faiss_index_file, faiss.IO_FLAG_MMAP)
-        # Manually load metadata (docstore and index_to_docstore) without loading the index
-        import pickle
-        for meta_file in ["faiss.pkl", "index.pkl"]:
-            meta_path = os.path.join(vectorstore_path, meta_file)
-            if os.path.exists(meta_path):
-                with open(meta_path, "rb") as f:
-                    saved = pickle.load(f)
-                break
-        else:
-            raise FileNotFoundError(
-                f"Could not find FAISS metadata pickle in {vectorstore_path}"
-            )
-                # extract metadata
+    """
+    Expects a ZIP at vectorstore_path + ".zip" containing:
+      - index.faiss
+      - index.pkl
+    Files may be nested under a subfolder (e.g. vectorstore_index_colab/).
+    If the ZIP exists on GCS, download & load only.
+    Otherwise, build from `docs`, save, re-zip, and upload.
+    """
+    fs = gcsfs.GCSFileSystem()
+    is_gcs = vectorstore_path.startswith("gs://")
+    zip_uri = vectorstore_path.rstrip("/") + ".zip"
+
+    local_zip = "/tmp/faiss_index.zip"
+    local_dir = "/tmp/faiss_store"
+
+    # 1) if ZIP exists, download & extract
+    if is_gcs and await run_in_threadpool(fs.exists, zip_uri):
+        logger.info("Found FAISS ZIP on GCS; loading only.")
+        # clean slate
+        if os.path.exists(local_dir):
+            shutil.rmtree(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
+
+        # download zip
+        await run_in_threadpool(fs.get, zip_uri, local_zip)
+
+        # extract
+        def _extract():
+            with zipfile.ZipFile(local_zip, "r") as zf:
+                zf.extractall(local_dir)
+        await run_in_threadpool(_extract)
+
+        # locate the two files anywhere under local_dir
+        idx_path = None
+        meta_path = None
+        for root, _, files in os.walk(local_dir):
+            if "index.faiss" in files:
+                idx_path = os.path.join(root, "index.faiss")
+            if "index.pkl" in files:
+                meta_path = os.path.join(root, "index.pkl")
+        if not idx_path or not meta_path:
+            raise FileNotFoundError("Couldn't find index.faiss or index.pkl in extracted ZIP.")
+
+        # memory-map load
+        mmap_index = await run_in_threadpool(
+            faiss.read_index, idx_path, faiss.IO_FLAG_MMAP
+        )
+
+        # load metadata
+        with open(meta_path, "rb") as f:
+            saved = pickle.load(f)
+
+        # unpack metadata
         if isinstance(saved, tuple):
-            # Handle metadata tuple of length 2 or 3
-            if len(saved) == 3:
-                _, docstore, index_to_docstore = saved
-            elif len(saved) == 2:
-                docstore, index_to_docstore = saved
-            else:
-                raise ValueError(f"Unexpected metadata tuple length: {len(saved)}")
+            _, docstore, index_to_docstore = (
+                saved if len(saved) == 3 else (None, *saved)
+            )
         else:
-            if hasattr(saved, 'docstore'):
-                docstore = saved.docstore
-            elif hasattr(saved, '_docstore'):
-                docstore = saved._docstore
-            else:
-                raise AttributeError("Could not find docstore in FAISS metadata")
-            if hasattr(saved, 'index_to_docstore'):
-                index_to_docstore = saved.index_to_docstore
-            elif hasattr(saved, '_index_to_docstore'):
-                index_to_docstore = saved._index_to_docstore
-            elif hasattr(saved, '_faiss_index_to_docstore'):
-                index_to_docstore = saved._faiss_index_to_docstore
-            else:
-                raise AttributeError("Could not find index_to_docstore in FAISS metadata")
-        # reconstruct FAISS wrapper
+            docstore = getattr(saved, "docstore", saved._docstore)
+            index_to_docstore = getattr(
+                saved,
+                "index_to_docstore",
+                getattr(saved, "_index_to_docstore", saved._faiss_index_to_docstore)
+            )
+
+        # reconstruct FAISS
         vs = FAISS(
             embedding_function=EMBEDDING,
-            index=mmap_idx,
+            index=mmap_index,
             docstore=docstore,
             index_to_docstore_id=index_to_docstore,
         )
+        logger.info("FAISS index loaded from ZIP.")
         return vs
 
-    # 2) Else: build from scratch in batches
-    logger.info(f"Building FAISS index in batches of {batch_size}…")
-    vs: Optional[FAISS] = None
-    for i in tqdm(range(0, len(chunks), batch_size),
-                  desc="Building FAISS index",
-                  unit="batch"):
-        batch = chunks[i : i + batch_size]
+    # 2) otherwise, build from scratch and upload
+    logger.info("No FAISS ZIP found; building index from scratch.")
+    if os.path.exists(local_dir):
+        shutil.rmtree(local_dir)
+    os.makedirs(local_dir, exist_ok=True)
 
+    vs: FAISS = None
+    for i in range(0, len(docs), batch_size):
+        batch = docs[i : i + batch_size]
         if vs is None:
             vs = FAISS.from_documents(batch, EMBEDDING)
         else:
             vs.add_documents(batch)
-
-        # periodic save every 5 batches
-        if (i // batch_size) % 5 == 0:
-            vs.save_local(vectorstore_path)
-
-        logger.info(f"  • Saved batch up to document {i + len(batch)} / {len(chunks)}")
     assert vs is not None, "No documents to index!"
+
+    # save locally
+    vs.save_local(local_dir)
+
+    if is_gcs:
+        # re-zip all contents of local_dir (flattened)
+        def _zip_dir():
+            with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(local_dir):
+                    for fname in files:
+                        full = os.path.join(root, fname)
+                        arc = os.path.relpath(full, local_dir)
+                        zf.write(full, arc)
+        await run_in_threadpool(_zip_dir)
+        await run_in_threadpool(fs.put, local_zip, zip_uri)
+        logger.info("Built FAISS index and uploaded ZIP to GCS.")
+
     return vs
+
 
 # === Index Builder ===
 async def build_indexes(
@@ -312,6 +424,9 @@ async def build_indexes(
     chunk_overlap: int,
     debug_size: Optional[int]
 ) -> Tuple[FAISS, index.Index]:
+    """
+    Load documents, build/load Whoosh and FAISS indices, and return both.
+    """
     docs = await load_documents(parquet_path, debug_size)
     ix = await build_whoosh_index(docs, whoosh_dir)
 
@@ -324,3 +439,48 @@ async def build_indexes(
     vs = await build_or_load_faiss(chunks, vectorstore_path)
 
     return vs, ix
+
+# === Hybrid Retriever ===
+class HybridRetriever(BaseRetriever):
+    """Hybrid retriever combining BM25 and FAISS with cross-encoder re-ranking."""
+    # store FAISS and Whoosh under private attributes to avoid Pydantic field errors
+    _vs: FAISS = PrivateAttr()
+    _ix: index.Index = PrivateAttr()
+    _compressor: DocumentCompressorPipeline = PrivateAttr()
+    _cross_encoder: CrossEncoder = PrivateAttr()
+
+    def __init__(
+        self,
+        vs: FAISS,
+        ix: index.Index,
+        compressor: DocumentCompressorPipeline,
+        cross_encoder: CrossEncoder
+    ) -> None:
+        super().__init__()
+        object.__setattr__(self, '_vs', vs)
+        object.__setattr__(self, '_ix', ix)
+        object.__setattr__(self, '_compressor', compressor)
+        object.__setattr__(self, '_cross_encoder', cross_encoder)
+
+    async def _aget_relevant_documents(self, query: str) -> List[Document]:
+        # BM25 retrieval using Whoosh index
+        bm_docs = await bm25_search(self._ix, query, settings.hybrid_k)
+        # Dense retrieval using FAISS
+        dense_docs = self._vs.similarity_search_by_vector(
+            embed_query_cached(query), k=settings.hybrid_k
+        )
+        # Cross-encoder re-ranking
+        candidates = bm_docs + dense_docs
+        scores = self._cross_encoder.predict([
+            (query, doc.page_content) for doc in candidates
+        ])
+        ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
+        top = [doc for _, doc in ranked[: settings.hybrid_k]]
+        # Compress and return
+        return self._compressor.compress_documents(top, query=query)
+
+    def _get_relevant_documents(self, query: str) -> List[Document]:
+        import asyncio
+        return asyncio.get_event_loop().run_until_complete(
+            self._aget_relevant_documents(query)
+        )

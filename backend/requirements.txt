@@ -16,12 +16,8 @@ google-cloud-storage==2.11.0
 # RAG & embeddings
 pytorch-lightning==2.5.1           
 langchain
-#==0.3.25                 
 langchain-huggingface
-#==0.2.0        
 sentence-transformers
-#==4.1.0
-# 2.7.0
 langchain-community==0.3.24
 
 # Vector store
@@ -37,15 +33,12 @@ tiktoken>=0.4.0
 sentencepiece==0.2.0
 transformers
 torchvision
-#accelerate==0.32.0
 sympy>=1.13.1
 peft
-#==0.11.1
 
 aiofiles==24.1.0
 optimum==1.25.3
 bitsandbytes==0.45.5
-#gptqmodel==2.2.0
 hf_xet
 HuggingFace
 huggingface_hub

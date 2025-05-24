@@ -1,5 +1,5 @@
 ---
-title: EU Explorer       # the display name of your Space
+title: EU Explorer (MDA Assignment)      # the display name of your Space
 emoji: 🤖                         # a single emoji that represents your app
 colorFrom: purple                 # one of: red, yellow, green, blue, indigo, purple, pink, gray
 colorTo: indigo                   # another one from the same list, for the gradient

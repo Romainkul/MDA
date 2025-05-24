@@ -1,18 +1,4 @@
 #!/bin/bash
-# Start nginx directly
-#service nginx start &
-#NGINX_PID=$!
-#nginx -g "daemon off;" &
-# Wait briefly to ensure nginx is up
-#sleep 1
-# Serve static build
-#python -m http.server --directory ./static --bind 0.0.0.0 8000 & echo $! > http_server.pid
-# Start FastAPI
-#uvicorn "app.main:app" --host 0.0.0.0 --port 7860
-# Cleanup static server on shutdown
-#pkill -F http_server.pid
-#rm http_server.pid
-# Start nginx in foreground
 echo "HF_SDK = $HF_SPACE_SDK, APP_PORT = $APP_PORT, PORT = $PORT"
 echo "$GCP_SA_JSON" > /tmp/sa.json
 chmod 600 /tmp/sa.json
