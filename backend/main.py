@@ -55,14 +55,14 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "meta-llama/Llama-3.2-3B-Instruct"#"google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
     chunk_overlap: int = 100
     hybrid_k:      int = 5
     assistant_role: str = (
-        "You are a concise, factual assistant. Cite Document [ID] for each claim."
+        "You are a knowledgeable project analyst.  You have access to the following retrieved document snippets (with Project IDs in [brackets])"
     )
     skip_warmup: bool = True
     allowed_origins: List[str] = ["*"]
@@ -643,8 +643,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Seq2seq pipeline
     logger.info("Initializing Pipeline")
-    full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
-    #full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    #full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
+    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
 
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
@@ -652,21 +652,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         {torch.nn.Linear},
         dtype=torch.qint8
     )
-
     # Create your text-generation pipeline on CPU
     gen_pipe = pipeline(
-        "text2text-generation",#"text-generation",#"text2text-generation",
+        "text-generation",#"text2text-generation",##"text2text-generation",
         model=llm_model,
-        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model,use_fast= False),
-        device=-1,              # force CPU
+        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+        device=-1,           # CPU
+        max_new_tokens=256,
+        do_sample=True,
         temperature=0.7,
-        max_new_tokens=512,
-        do_sample=False,
-        num_beams=4,
-        early_stopping=True,
-        no_repeat_ngram_size=3,
-        length_penalty=1.2,
-        )
+    )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
@@ -694,10 +689,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     prompt = PromptTemplate.from_template(
         f"{settings.assistant_role}\n\n"
-        "Context (up to 2,000 tokens, with document IDs):\n"
         "{context}\n"
-        "Q: {question}\n"
-        "A: Please provide a clear, detailed answer in full sentences (at least 3-4 sentences)."
+        "Now answer the user’s question thoroughly:"
+        "Question: {question}\n"
+        "Your answer should: \n"
+        "1. Be at least **4–6 sentences** long \n"
+        "2. Explain concepts clearly in full sentences \n"  
+        "3. Cite any document you draw on by including its ID in [brackets] inline \n"
+        "4. Provide any high-level conclusions or recommendations at the end \n"
+
+        "Begin your answer below:"
     )
 
     logger.info("Initializing Retrieval Chain")
