@@ -467,7 +467,7 @@ async def build_or_load_faiss(
     # 3) If index not present locally, build from scratch
     if not (os.path.exists(idx_path) and os.path.exists(meta_path)):
         os.makedirs(local_dir, exist_ok=True)
-
+        logger.info("Creating FAISS Index")
         vs: FAISS = None
         # build in batches
         for i in range(0, len(docs), batch_size):
@@ -494,6 +494,7 @@ async def build_or_load_faiss(
             await run_in_threadpool(_zip_dir)
             await run_in_threadpool(fs.put, local_zip, zip_uri)
     else:
+        logger.info("Loading FAISS Index")
         # 5) Memory-map load existing index
         # note: FAISS index file is read-only mapped
         mmap_index = await run_in_threadpool(
@@ -515,7 +516,7 @@ async def build_or_load_faiss(
                 "index_to_docstore",
                 getattr(saved, "_index_to_docstore", saved._faiss_index_to_docstore)
             )
-
+        logger.info("Reconstructing FAISS Index")
         # reconstruct the FAISS wrapper
         vs = FAISS(
             embedding_function=EMBEDDING,
@@ -523,7 +524,7 @@ async def build_or_load_faiss(
             docstore=docstore,
             index_to_docstore_id=index_to_docstore,
         )
-
+        logger.info("Done, FAISS Index")
     return vs
 
 # === Index Builder ===
