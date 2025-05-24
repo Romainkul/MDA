@@ -63,6 +63,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   setQuestion,
   chatHistory,
   askChatbot,
+  loading,
   messagesEndRef,
 }) => {
   const [filterOpts, setFilterOpts] = useState<FilterOptions>({
@@ -84,7 +85,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     if (orgFilter)    params.set("organization", orgFilter);
     if (countryFilter) params.set("country", countryFilter);
     if (search)       params.set("search", search);
-    if (idFilter.length >= MIN_SEARCH_LEN) params.set("id", idFilter);
+    if (idFilter.length >= MIN_SEARCH_LEN) params.set("proj_id", idFilter);
     if (fundingSchemeFilter) params.set("fundingScheme", fundingSchemeFilter);
     params.set("sortField", sortField);
     params.set("sortOrder", sortOrder);
@@ -251,50 +252,74 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
 
       {/* Right Pane: Assistant */}
       <Box
-        w={{ base: "100%", md: "30%" }}
-        bg="gray.50"
-        p={4}
-        borderRadius="md"
-        height="500px"
-        display="flex"
-        flexDirection="column"
-      >
-        <Heading size="sm" mb={2}>
-          Assistant
-        </Heading>
-        <Text fontSize="xs" color="gray.500" mb={3}>
-          ⚠️ The model may occasionally produce incorrect or misleading answers.
-        </Text>
-        <Box flex={1} overflowY="auto" mb={4}>
-          <VStack spacing={3} align="stretch">
-            {chatHistory.map((msg: ChatMessage, i: number) => (
-              <HStack
-                key={i}
-                alignSelf={msg.role === "user" ? "flex-end" : "flex-start"}
-                maxW="90%"
-              >
-                {msg.role === "assistant" && <Avatar size="sm" name="Bot" />}
-                <Box>
-                  <Text fontSize="sm" bg={msg.role === "user" ? "blue.100" : "gray.200"} px={3} py={2} borderRadius="md">
-                    {msg.content}
-                  </Text>
-                </Box>
-                {msg.role === "user" && <Avatar size="sm" name="You" bg="blue.300" />}
-              </HStack>
-            ))}
-            <div ref={messagesEndRef} />
-          </VStack>
+          w={{ base: "100%", md: "30%" }}
+          bg="gray.50"
+          p={4}
+          borderRadius="md"
+          height="500px"
+          display="flex"
+          flexDirection="column"
+          mt={6}  // spacing from above
+        >
+          <Heading size="sm" mb={2}>Assistant</Heading>
+          <Text fontSize="xs" color="gray.500" mb={3}>
+            ⚠️ The model may occasionally produce incorrect or misleading answers.
+          </Text>
+          <Box flex={1} overflowY="auto" mb={4}>
+            <VStack spacing={3} align="stretch">
+              {chatHistory.map((msg, i) => (
+                <HStack
+                  key={i}
+                  alignSelf={msg.role === "user" ? "flex-end" : "flex-start"}
+                  maxW="90%"
+                >
+                  {msg.role === "assistant" && <Avatar size="sm" name="Bot" />}
+                  <Box>
+                    <Text
+                      fontSize="sm"
+                      bg={msg.role === "user" ? "blue.100" : "gray.200"}
+                      px={3}
+                      py={2}
+                      borderRadius="md"
+                    >
+                      {msg.content}
+                      {msg.content === "Generating answer..." && (
+                        <Spinner size="xs" ml={2} />
+                      )}
+                    </Text>
+                  </Box>
+                  {msg.role === "user" && (
+                    <Avatar size="sm" name="You" bg="blue.300" />
+                  )}
+                </HStack>
+              ))}
+              <div ref={messagesEndRef} />
+            </VStack>
+          </Box>
+          <HStack>
+            <Input
+              placeholder="Ask something..."
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  askChatbot();
+                }
+              }}
+              isDisabled={loading}
+            />
+            <Button
+              onClick={askChatbot}
+              colorScheme="blue"
+              aria-label="Ask the chatbot"
+              isLoading={loading}
+              loadingText="Waiting..."
+            >
+              Send
+            </Button>
+          </HStack>
         </Box>
-        <HStack>
-          <Input
-            placeholder="Ask something..."
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askChatbot(); } }}
-          />
-          <Button onClick={askChatbot} colorScheme="blue" aria-label="Ask the chatbot">Send</Button>
-        </HStack>
-      </Box>
     </Flex>
   );
 };

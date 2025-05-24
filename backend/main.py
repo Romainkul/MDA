@@ -657,11 +657,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     gen_pipe = pipeline(
         "text2text-generation",#"text-generation",#"text2text-generation",
         model=llm_model,
-        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model,use_fast= False),
         device=-1,              # force CPU
         max_new_tokens=256,
         do_sample=True,
-        temperature=0.5,
+        temperature=0.7,
     )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
@@ -715,7 +715,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     fs = gcsfs.GCSFileSystem()
     with fs.open(settings.parquet_path, "rb") as f:
         df = pl.read_parquet(f)
-
+    
+    df = df.with_columns(
+        pl.col("id").cast(pl.Int64).alias("id")
+    )
+    
     # lowercase for filtering
     for col in ("title", "status", "legalBasis","fundingScheme"):
         df = df.with_columns(pl.col(col).str.to_lowercase().alias(f"_{col}_lc"))

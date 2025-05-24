@@ -97,7 +97,7 @@ export default function ProjectDetails({
     : [51.505, -0.09];
   
   // format date string to YYYY-MM-DD
-  const fmtDate = (iso?: string) => iso ? new Date(iso).toISOString().split('T')[0] : '-';
+  //const fmtDate = (iso?: string) => iso ? new Date(iso).toISOString().split('T')[0] : '-';
 
   // format numbers with two decimals
   const fmtNum = (num: number | null | undefined): string =>
@@ -125,11 +125,11 @@ export default function ProjectDetails({
             <Text fontWeight="bold">Acronym</Text>
             <Text>{project.acronym}</Text>
           </Box>
-          <Box><Text fontWeight="bold">Start Date</Text><Text>{fmtDate(project.startDate)}</Text></Box>
-          <Box><Text fontWeight="bold">End Date</Text><Text>{fmtDate(project.endDate)}</Text></Box>
+          <Box><Text fontWeight="bold">Start Date</Text><Text>{new Date(project.startDate).toISOString().slice(0,10)}</Text></Box>
+          <Box><Text fontWeight="bold">End Date</Text><Text>{new Date(project.endDate).toISOString().slice(0,10)}</Text></Box>
           <Box><Text fontWeight="bold">Funding (EC max)</Text><Text>€{fmtNum(project.ecMaxContribution)}</Text></Box>
           <Box><Text fontWeight="bold">Total Cost</Text><Text>€{fmtNum(project.totalCost)}</Text></Box>
-          <Box><Text fontWeight="bold">Funding Scheme</Text><Text>project.fundingScheme</Text></Box>
+          <Box><Text fontWeight="bold">Funding Scheme</Text><Text>{project.fundingScheme}</Text></Box>
           <Box>
             <Text fontWeight="bold">Legal Basis</Text>
             <Text>{project.legalBasis}</Text>

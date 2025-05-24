@@ -38,6 +38,7 @@ export const useAppState = () => {
     });
 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const [availableFilters, setAvailableFilters] = useState<AvailableFilters>({
     statuses: ["SIGNED", "CLOSED", "TERMINATED","UNKNOWN"],
@@ -49,7 +50,7 @@ export const useAppState = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjects = () => {
-    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&id=${idFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&proj_id=${idFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
       .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
       .catch(console.error);
@@ -84,13 +85,20 @@ export const useAppState = () => {
   }
 
   const askChatbot = async () => {
-    if (!question.trim()) return;
+    if (!question.trim() || loading) return;          
     const newChat: ChatMessage[] = [
       ...chatHistory,
       { role: "user", content: question },
     ];
     setChatHistory(newChat);
     setQuestion("");
+    setLoading(true);                                      
+
+    // 1) placeholder
+    setChatHistory((h) => [
+      ...h,
+      { role: "assistant", content: "Generating answer..." },
+    ]);
 
     try {
       const res = await fetch("/api/rag", {
@@ -99,48 +107,41 @@ export const useAppState = () => {
         body: JSON.stringify({ query: question }),
       });
 
-      // Log the raw response for debugging
-      console.log("RAG API status:", res.status, res.statusText);
       const text = await res.text();
-      console.log("RAG API raw body:", text);
-
       if (!res.ok) {
-        // Try to parse JSON error, or fall back to raw text
-        let errDetail: string;
+        let errDetail = text;
         try {
-          const errJson = JSON.parse(text);
-          errDetail = errJson.detail || JSON.stringify(errJson);
-        } catch {
-          errDetail = text;
-        }
-        throw new Error(`API error ${res.status}: ${errDetail}`);
+          errDetail = JSON.parse(text).detail;
+        } catch {}
+        throw new Error(errDetail);
       }
 
-      // Now parse the successful JSON
       const data: RagResponse = JSON.parse(text);
-      console.log("RAG API parsed:", data);
-
       const idList = data.source_ids.join(", ") || "none";
       const assistantContent = `${data.answer}
 
-  The output was based on the following Project IDs: ${idList}`;
+The output was based on the following Project IDs: ${idList}`;
 
-      setChatHistory([
-        ...newChat,
+      // 2) replace placeholder with real answer
+      setChatHistory((h) => [
+        ...h.slice(0, -1),
         { role: "assistant", content: assistantContent },
       ]);
     } catch (err: any) {
-      console.error("askChatbot error:", err);
-      setChatHistory([
-        ...newChat,
+      // replace placeholder with error message
+      setChatHistory((h) => [
+        ...h.slice(0, -1),
         {
           role: "assistant",
           content: `Something went wrong: ${err.message}`,
         },
       ]);
+    } finally {
+      setLoading(false);
+      // scroll to bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
-
 
   useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
   useEffect(() => {
@@ -185,6 +186,7 @@ export const useAppState = () => {
       chatHistory,
       setChatHistory,
       askChatbot,
+      loading,
       messagesEndRef
     },
     detailsProps: {
@@ -193,6 +195,7 @@ export const useAppState = () => {
       setQuestion,
       chatHistory,
       askChatbot,
+      loading,
       messagesEndRef
     }
   };

@@ -101,8 +101,9 @@ export interface ProjectExplorerProps {
   setPage: React.Dispatch<React.SetStateAction<number>>;
   setSelectedProject: (project: Project) => void;
   question: string;
-  setQuestion: (value: string) => void;
+  setQuestion: (q: string) => void;
   chatHistory: ChatMessage[];
-  askChatbot: () => void;
+  askChatbot: () => Promise<void>;
+  loading: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
 }
