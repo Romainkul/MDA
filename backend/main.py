@@ -703,8 +703,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing Hybrid Retriever")
     retriever = HybridRetriever(vs=vs, ix=ix, compressor=compressor, cross_encoder=cross_encoder)
     
-    prompt = PromptTemplate.from_template("""
-        {assistant_role}
+    prompt = PromptTemplate.from_template(f"""
+        {settings.assistant_role}
 
         You have the following retrieved document snippets (with Project IDs in [brackets]):
 
