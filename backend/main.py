@@ -56,7 +56,6 @@ class Settings(BaseSettings):
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
     llm_model:           str = "google/flan-t5-base"
-    #"google/mt5-base"#"meta-llama/Llama-3.2-1B-Instruct"#"meta-llama/Llama-3.2-3B-Instruct"#"google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
@@ -915,10 +914,10 @@ def get_filters(request: Request):
     return {
         "statuses":     normalize(df["status"].to_list()),
         "legalBases":   normalize(df["legalBasis"].to_list()),
-        "organizations": normalize(df["list_name"].explode().to_list()),
+        "organizations": normalize(df["list_name"].explode().to_list())[:500],
         "countries":    normalize(df["list_country"].explode().to_list()),
         "fundingSchemes": normalize(df["fundingScheme"].explode().to_list()),
-        "ids":          normalize(df["id"].to_list()),
+        #"ids":          normalize(df["id"].to_list()),
     }
 
 @app.get("/api/stats")
