@@ -24,7 +24,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 
-from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM, AutoModelForSeq2SeqLM, T5Tokenizer,T5ForConditionalGeneration
 from sentence_transformers import CrossEncoder
 
 from whoosh import index
@@ -55,12 +55,13 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "meta-llama/Llama-3.2-1B-Instruct"#"meta-llama/Llama-3.2-3B-Instruct"#"google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "google/flan-t5-base"
+    #"google/mt5-base"#"meta-llama/Llama-3.2-1B-Instruct"#"meta-llama/Llama-3.2-3B-Instruct"#"google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
     chunk_overlap: int = 100
-    hybrid_k:      int = 4
+    hybrid_k:      int = 2
     assistant_role: str = (
         "You are a knowledgeable project analyst.  You have access to the following retrieved document snippets (with Project IDs in [brackets])"
     )
@@ -644,24 +645,39 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Seq2seq pipeline
     logger.info("Initializing Pipeline")
     #full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
-    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)#, device_map="auto")
+    #full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)#, device_map="auto")
 
     # Apply dynamic quantization to all Linear layers
-    llm_model = torch.quantization.quantize_dynamic(
-        full_model,
-        {torch.nn.Linear},
-        dtype=torch.qint8
-    )
+    #llm_model = torch.quantization.quantize_dynamic(
+    #    full_model,
+    #    {torch.nn.Linear},
+    #    dtype=torch.qint8
+    #)
     # Create your text-generation pipeline on CPU
+    #gen_pipe = pipeline(
+    #    "text-generation",#"text2text-generation",##"text2text-generation",
+    #    model=llm_model,
+    #    tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
+    #    device=-1,           # CPU
+    #    max_new_tokens=256,
+    #    do_sample=True,
+    #    temperature=0.7,
+    #    #device_map="auto"
+    #)
+    tokenizer = T5Tokenizer.from_pretrained(settings.llm_model)
+    model     = T5ForConditionalGeneration.from_pretrained(settings.llm_model)
+    model     = torch.quantization.quantize_dynamic(
+        model, {torch.nn.Linear}, dtype=torch.qint8
+    )
+
     gen_pipe = pipeline(
-        "text-generation",#"text2text-generation",##"text2text-generation",
-        model=llm_model,
-        tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
-        device=-1,           # CPU
+        "text2text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        device=-1,
         max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
-        #device_map="auto"
     )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
@@ -688,19 +704,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing Hybrid Retriever")
     retriever = HybridRetriever(vs=vs, ix=ix, compressor=compressor, cross_encoder=cross_encoder)
     
-    prompt = PromptTemplate.from_template(
-        f"{settings.assistant_role}\n\n"
-        "{context}\n"
-        "Now answer the user's question thoroughly:"
-        "Question: {question}\n"
-        "Your answer should: \n"
-        "1. Be at least **4-6 sentences** long \n"
-        "2. Explain concepts clearly in full sentences \n"  
-        "3. Cite any document you draw on by including its ID in [brackets] inline \n"
-        "4. Provide any high-level conclusions or recommendations at the end \n"
+    prompt = PromptTemplate.from_template("""
+        {assistant_role}
 
-        "Begin your answer below:"
-    )
+        You have the following retrieved document snippets (with Project IDs in [brackets]):
+
+        {context}
+
+        User Question:
+        {question}
+
+        Please answer thoroughly, following these rules:
+        1. Write at least 4-6 full sentences.
+        2. Use clear, technical language in full sentences.
+        3. Cite any document you reference by including its ID in [brackets] inline.
+        4. Conclude with high-level insights or recommendations.
+
+        Answer:
+        """.strip())
 
     logger.info("Initializing Retrieval Chain")
     app.state.rag_chain = ConversationalRetrievalChain.from_llm(

@@ -125,8 +125,8 @@ export default function ProjectDetails({
             <Text fontWeight="bold">Acronym</Text>
             <Text>{project.acronym}</Text>
           </Box>
-          <Box><Text fontWeight="bold">Start Date</Text><Text>{new Date(project.startDate).toISOString().slice(0,10)}</Text></Box>
-          <Box><Text fontWeight="bold">End Date</Text><Text>{new Date(project.endDate).toISOString().slice(0,10)}</Text></Box>
+          <Box><Text fontWeight="bold">Start Date</Text><Text>{project.startDate.slice(0, 10)}</Text></Box>
+          <Box><Text fontWeight="bold">End Date</Text><Text>{project.endDate.slice(0, 10)}</Text></Box>
           <Box><Text fontWeight="bold">Funding (EC max)</Text><Text>€{fmtNum(project.ecMaxContribution)}</Text></Box>
           <Box><Text fontWeight="bold">Total Cost</Text><Text>€{fmtNum(project.totalCost)}</Text></Box>
           <Box><Text fontWeight="bold">Funding Scheme</Text><Text>{project.fundingScheme}</Text></Box>
