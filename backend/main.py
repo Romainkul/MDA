@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
@@ -643,8 +643,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Seq2seq pipeline
     logger.info("Initializing Pipeline")
-    #full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
-    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
+    #full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
 
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
@@ -655,13 +655,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Create your text-generation pipeline on CPU
     gen_pipe = pipeline(
-        "text-generation",#"text2text-generation",
+        "text2text-generation",#"text-generation",#"text2text-generation",
         model=llm_model,
         tokenizer=AutoTokenizer.from_pretrained(settings.llm_model),
         device=-1,              # force CPU
         max_new_tokens=256,
         do_sample=True,
-        temperature=0.7,
+        temperature=0.5,
     )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
@@ -693,7 +693,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Context (up to 2,000 tokens, with document IDs):\n"
         "{context}\n"
         "Q: {question}\n"
-        "A: Provide your answer."
+        "A:"
     )
 
     logger.info("Initializing Retrieval Chain")
@@ -765,9 +765,6 @@ async def ask_rag(
 ):
     try:
         result = await rag_chain.ainvoke({"question": req.query})
-        logger.info(f"Print result {result}")
-        result = await rag_chain.ainvoke({"query": req.query})
-        # make sure it really is a dict
         if not isinstance(result, dict):
             result2 = await rag_chain.acall({"question": req.query})
             raise ValueError(f"Expected dict from chain, got {type(result)} and acall(): {result2} with type {type(result2)}")
