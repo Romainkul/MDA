@@ -92,12 +92,17 @@ export default function ProjectDetails({
   const predicted = project.predicted_label;
   const probability = project.predicted_prob;
   // Map center fallback
-  const center: [number, number] = orgLocations.length
-    ? [orgLocations[0].latitude, orgLocations[0].longitude]
+  const validOrgs = orgLocations.filter(
+    (o) =>
+      typeof o.latitude === "number" &&
+      !Number.isNaN(o.latitude) &&
+      typeof o.longitude === "number" &&
+      !Number.isNaN(o.longitude)
+  );
+  // pick a default center (or fallback to [0,0])
+  const center: [number, number] = validOrgs.length
+    ? [validOrgs[0].latitude, validOrgs[0].longitude]
     : [51.505, -0.09];
-  
-  // format date string to YYYY-MM-DD
-  //const fmtDate = (iso?: string) => iso ? new Date(iso).toISOString().split('T')[0] : '-';
 
   // format numbers with two decimals
   const fmtNum = (num: number | null | undefined): string =>
@@ -231,15 +236,15 @@ export default function ProjectDetails({
               </Table>
             )}
 
-            {!loadingOrgs && (
+            {!loadingOrgs && validOrgs.length > 0 &&(
               <Box w="100%" h="300px" borderRadius="md" overflow="hidden">
                 <MapContainer center={center} zoom={4} style={{ height: '100%', width: '100%' }}>
-                  <ResizeMap count={orgLocations.length} />
+                  <ResizeMap count={validOrgs.length} />
                   <TileLayer
                     attribution="&copy; OpenStreetMap contributors"
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  {orgLocations.map((org, i) => (
+                  {validOrgs.map((org, i) => (
                     <Marker key={i} position={[org.latitude, org.longitude]} icon={customIcon}>
                       <Popup>
                         <Text fontWeight="bold">{org.name}</Text>

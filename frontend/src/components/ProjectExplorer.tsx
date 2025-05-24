@@ -185,7 +185,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             value={fundingSchemeFilter}
             onChange={(e) => { setFundingSchemeFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}
-            width="120px"
+            width="180px"
           >
             {filterOpts.fundingSchemes.map((c) => <option key={c} value={c}>{c}</option>)}
           </ChakraSelect>

@@ -992,5 +992,5 @@ def get_project_organizations(project_id: str):
             "activityType","orgURL","country","latitude","longitude"
         ])
     )
-
+    logger.info(f"{orgs_df.to_df()}")
     return orgs_df.to_dicts()
