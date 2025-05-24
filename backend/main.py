@@ -37,7 +37,7 @@ from langchain.schema import BaseRetriever, Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
 from langchain_community.vectorstores import FAISS
-from langchain_community.retrievers.document_compressors import DocumentCompressorPipeline
+from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
 
 # Project-specific imports
