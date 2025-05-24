@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
-    llm_model:           str = "google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
+    llm_model:           str = "google/flan-t5-base"#"google/mt5-base"#"bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
     # RAG parameters
     chunk_size:    int = 750
@@ -719,7 +719,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     df = df.with_columns(
         pl.col("id").cast(pl.Int64).alias("id")
     )
-    
+
     # lowercase for filtering
     for col in ("title", "status", "legalBasis","fundingScheme"):
         df = df.with_columns(pl.col(col).str.to_lowercase().alias(f"_{col}_lc"))
