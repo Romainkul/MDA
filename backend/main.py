@@ -659,10 +659,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         model=llm_model,
         tokenizer=AutoTokenizer.from_pretrained(settings.llm_model,use_fast= False),
         device=-1,              # force CPU
-        max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
-    )
+        max_new_tokens=512,
+        do_sample=False,
+        num_beams=4,
+        early_stopping=True,
+        no_repeat_ngram_size=3,
+        length_penalty=1.2,
+        )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
@@ -693,7 +698,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "Context (up to 2,000 tokens, with document IDs):\n"
         "{context}\n"
         "Q: {question}\n"
-        "A:"
+        "A: Please provide a clear, detailed answer in full sentences (at least 3-4 sentences)."
     )
 
     logger.info("Initializing Retrieval Chain")
@@ -820,7 +825,7 @@ def get_projects(
     if fundingScheme:
         sel = sel.filter(pl.col("_fundingScheme_lc").str.contains(fundingScheme.lower()))
     if proj_id:
-        sel = sel.filter(pl.col("id") == proj_id)
+        sel = sel.filter(pl.col("id") == int(proj_id))
 
     base_cols = [
         "id","title","status","startDate","endDate","ecMaxContribution","acronym",

@@ -144,6 +144,7 @@ The output was based on the following Project IDs: ${idList}`;
   };
 
   useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
+  
   useEffect(() => {
     console.log("Updated filters:", filters);
     fetchStats(filters);
