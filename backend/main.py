@@ -11,6 +11,7 @@ import os
 import logging
 import aiofiles
 import polars as pl
+import zipfile
 import gcsfs
 
 from langchain.schema import Document,BaseRetriever
@@ -30,6 +31,8 @@ from whoosh import index
 from whoosh.fields import Schema, TEXT, ID
 from whoosh.analysis import StemmingAnalyzer
 from whoosh.qparser import MultifieldParser
+import pickle
+from pydantic import PrivateAttr
 from tqdm import tqdm
 import faiss
 import torch
@@ -78,7 +81,7 @@ def embed_query_cached(query: str) -> List[float]:
     return EMBEDDING.embed_query(query.strip().lower())
 
 # === Whoosh Cache & Builder ===
-_WHOOSH_CACHE: Dict[str, index.Index] = {}
+"""_WHOOSH_CACHE: Dict[str, index.Index] = {}
 
 async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Index:
     key = whoosh_dir
@@ -115,7 +118,74 @@ async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Ind
         return _WHOOSH_CACHE[key]
     except Exception as e:
         logger.error(f"Failed to build Whoosh index: {e}")
-        raise
+        raise"""
+
+async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Index:
+    """
+    Always uses GCS if whoosh_dir starts with "gs://". Expects a single
+    whoosh index archive at whoosh_dir + ".zip". If that archive exists, it
+    will be downloaded and extracted; otherwise the index is built from docs
+    and the archive is uploaded to GCS.
+    """
+    logger.info(f"Building whoosh")
+    fs = gcsfs.GCSFileSystem()
+    is_gcs = whoosh_dir.startswith("gs://")
+
+    # Local paths
+    local_zip = "/tmp/whoosh_index.zip"
+    local_dir = "/tmp/whoosh_index"
+
+    if is_gcs:
+        # GCS URI for the zip
+        zip_uri = whoosh_dir.rstrip("/") + ".zip"
+
+        # 1) Download the zip (blocking I/O in threadpool)
+        await run_in_threadpool(fs.get, zip_uri, local_zip)
+
+        # 2) Extract all files to local_dir
+        os.makedirs(local_dir, exist_ok=True)
+        def _extract():
+            with zipfile.ZipFile(local_zip, "r") as zf:
+                zf.extractall(local_dir)
+        await run_in_threadpool(_extract)
+
+    # 3) If local_dir doesn't contain a Whoosh index, build it from scratch
+    if not index.exists_in(local_dir):
+        os.makedirs(local_dir, exist_ok=True)
+
+        # Define your schema
+        schema = Schema(
+            id=ID(stored=True, unique=True),
+            content=TEXT(analyzer=StemmingAnalyzer()),
+        )
+
+        # Create and populate the index
+        ix = index.create_in(local_dir, schema)
+        writer = ix.writer()
+        for doc in docs:
+            writer.add_document(
+                id=doc.metadata.get("id", ""),
+                content=doc.page_content,
+            )
+        writer.commit()
+
+        # If using GCS, re-zip and upload
+        if is_gcs:
+            def _zip_dir():
+                with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for root, _, files in os.walk(local_dir):
+                        for fname in files:
+                            path = os.path.join(root, fname)
+                            arcname = os.path.relpath(path, local_dir)
+                            zf.write(path, arcname)
+            await run_in_threadpool(_zip_dir)
+            await run_in_threadpool(fs.put, local_zip, zip_uri)
+
+    # 4) Open and return the Whoosh index
+    ix = index.open_dir(local_dir)
+    logger.info(f"Building Whoosh finished")
+    return ix
+
 
 # === Document Loader ===
 async def load_documents(
@@ -233,17 +303,16 @@ async def bm25_search(ix: index.Index, query: str, k: int) -> List[Document]:
     return await run_in_threadpool(_search)
 
 # === Helper: build or load FAISS with mmap ===
-import pickle
-async def build_or_load_faiss(
+"""async def build_or_load_faiss(
     chunks: List[Document],
     vectorstore_path: str,
     batch_size: int = 15000
-) -> FAISS:
-    """
+) -> FAISS:"""
+"""
     Always uses GCS. Expects 'index.faiss' and 'index.pkl' under vectorstore_path.
     Reconstructs the FAISS store using your provided logic.
     """
-    assert vectorstore_path.startswith("gs://")
+"""assert vectorstore_path.startswith("gs://")
     fs = gcsfs.GCSFileSystem()
 
     base = vectorstore_path.rstrip("/")
@@ -257,11 +326,16 @@ async def build_or_load_faiss(
     if fs.exists(uri_index) and fs.exists(uri_meta):
         logger.info("Found existing FAISS index on GCS; loading…")
         os.makedirs(os.path.dirname(local_index), exist_ok=True)
-        fs.get(uri_index, local_index, recursive=False)
-        fs.get(uri_meta,  local_meta,  recursive=False)
-
-        # Memory-map
-        mmap_idx = faiss.read_index(local_index, faiss.IO_FLAG_MMAP)
+        await run_in_threadpool(
+                fs.get_bulk,
+                [uri_index, uri_meta],
+                [local_index, local_meta]
+        )
+        
+        # 3) Memory‐map load
+        mmap_idx = await run_in_threadpool(
+            faiss.read_index, local_index, faiss.IO_FLAG_MMAP
+        )
 
         # Load metadata
         with open(local_meta, "rb") as f:
@@ -353,6 +427,103 @@ async def build_or_load_faiss(
     upload_dir(local_store)
     logger.info("Finished building index and uploaded to GCS.")
     
+    return vs"""
+
+async def build_or_load_faiss(
+    docs: List[Document],
+    vectorstore_path: str,
+    batch_size: int = 15000
+) -> FAISS:
+    """
+    Always uses GCS if vectorstore_path starts with "gs://". Expects
+    a single ZIP archive at vectorstore_path + ".zip" containing:
+      - index.faiss
+      - index.pkl
+    """
+    fs = gcsfs.GCSFileSystem()
+    is_gcs = vectorstore_path.startswith("gs://")
+
+    # Local paths
+    local_zip  = "/tmp/faiss_index.zip"
+    local_dir  = "/tmp/faiss_store"
+
+    if is_gcs:
+        zip_uri = vectorstore_path.rstrip("/") + ".zip"
+
+        # 1) Download ZIP from GCS (in threadpool)
+        await run_in_threadpool(fs.get, zip_uri, local_zip)
+
+        # 2) Extract ZIP to local_dir
+        os.makedirs(local_dir, exist_ok=True)
+        def _extract():
+            with zipfile.ZipFile(local_zip, "r") as zf:
+                zf.extractall(local_dir)
+        await run_in_threadpool(_extract)
+
+    # Paths to extracted files
+    idx_path  = os.path.join(local_dir, "index.faiss")
+    meta_path = os.path.join(local_dir, "index.pkl")
+
+    # 3) If index not present locally, build from scratch
+    if not (os.path.exists(idx_path) and os.path.exists(meta_path)):
+        os.makedirs(local_dir, exist_ok=True)
+
+        vs: FAISS = None
+        # build in batches
+        for i in range(0, len(docs), batch_size):
+            batch = docs[i : i + batch_size]
+            if vs is None:
+                vs = FAISS.from_documents(batch, EMBEDDING)
+            else:
+                vs.add_documents(batch)
+
+        assert vs is not None, "No documents to index!"
+
+        # save to local_dir
+        vs.save_local(local_dir)
+
+        # 4) Re-zip and upload back to GCS
+        if is_gcs:
+            def _zip_dir():
+                with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for root, _, files in os.walk(local_dir):
+                        for fname in files:
+                            path = os.path.join(root, fname)
+                            arcname = os.path.relpath(path, local_dir)
+                            zf.write(path, arcname)
+            await run_in_threadpool(_zip_dir)
+            await run_in_threadpool(fs.put, local_zip, zip_uri)
+    else:
+        # 5) Memory-map load existing index
+        # note: FAISS index file is read-only mapped
+        mmap_index = await run_in_threadpool(
+            faiss.read_index, idx_path, faiss.IO_FLAG_MMAP
+        )
+
+        # load metadata pickle
+        with open(meta_path, "rb") as f:
+            saved = pickle.load(f)
+
+        # unpack metadata
+        if isinstance(saved, tuple):
+            # (score_fn, docstore, index_to_docstore)
+            _, docstore, index_to_docstore = saved if len(saved) == 3 else (None, *saved)
+        else:
+            docstore = getattr(saved, "docstore", getattr(saved, "_docstore"))
+            index_to_docstore = getattr(
+                saved,
+                "index_to_docstore",
+                getattr(saved, "_index_to_docstore", saved._faiss_index_to_docstore)
+            )
+
+        # reconstruct the FAISS wrapper
+        vs = FAISS(
+            embedding_function=EMBEDDING,
+            index=mmap_index,
+            docstore=docstore,
+            index_to_docstore_id=index_to_docstore,
+        )
+
     return vs
 
 # === Index Builder ===
@@ -381,7 +552,6 @@ async def build_indexes(
 class HybridRetriever(BaseRetriever):
     """Hybrid retriever combining BM25 and FAISS with cross-encoder re-ranking."""
     # store FAISS and Whoosh under private attributes to avoid Pydantic field errors
-    from pydantic import PrivateAttr
     _vs: FAISS = PrivateAttr()
     _ix: index.Index = PrivateAttr()
     _compressor: DocumentCompressorPipeline = PrivateAttr()
@@ -538,7 +708,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.countries_list = df.explode("list_country")["list_country"].unique().to_list()
 
     yield
-    # teardown (if any) goes here
 
 # ---------------------------------------------------------------------------- #
 #                                   App Setup                                   #
