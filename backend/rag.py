@@ -46,7 +46,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
-from langchain_community.vectorstores import FAISS as LCFAISS
+from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 
 
