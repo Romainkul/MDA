@@ -135,6 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
+        repetition_penalty=1.2
     )
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 

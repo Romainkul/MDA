@@ -1,12 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { debounce } from "lodash";
-import type {
-  Project,
-  OrganizationLocation,
-  FilterState,
-  ChatMessage,
-  AvailableFilters,
-} from "./types";
+import type { Project, OrganizationLocation, FilterState, ChatMessage,AvailableFilters } from "./types";
 
 interface Stats {
   [key: string]: {
@@ -18,25 +12,20 @@ interface Stats {
 type SortOrder = "asc" | "desc";
 
 export const useAppState = () => {
-  // Projects state and pagination
   const [projects, setProjects] = useState<Project[]>([]);
-  const [page, setPage] = useState<number>(0);
-
-  // Search and filter states
   const [search, setSearch] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [legalFilter, setLegalFilter] = useState<string>("");
-  const [orgFilter, setOrgFilter] = useState<string>("");
-  const [countryFilter, setCountryFilter] = useState<string>("");
-  const [fundingSchemeFilter, setFundingSchemeFilter] = useState<string>("");
-  const [idFilter, setIdFilter] = useState<string>("");
-
-  // Sorting
-  const [sortField, setSortField] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
-
-  // Dashboard stats and available filters
+  const [page, setPage] = useState<number>(0);
+  const [question, setQuestion] = useState<string>("");
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [stats, setStats] = useState<Stats>({});
+  const [legalFilter, setLegalFilter] = useState('');
+  const [orgFilter, setOrgFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
+  const [fundingSchemeFilter, setFundingSchemeFilter ] = useState('');
+  const [idFilter, setIdFilter] = useState('');
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [filters, setFilters] = useState<FilterState>({
     status: "",
     organization: "",
@@ -46,135 +35,146 @@ export const useAppState = () => {
     maxYear: "2025",
     minFunding: "0",
     maxFunding: "10000000",
-  });
+    });
+
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+
   const [availableFilters, setAvailableFilters] = useState<AvailableFilters>({
-    statuses: ["SIGNED", "CLOSED", "TERMINATED", "UNKNOWN"],
+    statuses: ["SIGNED", "CLOSED", "TERMINATED","UNKNOWN"],
     organizations: [],
     countries: [],
     legalBases: [],
-    fundingSchemes: [],
-    ids: [],
+    fundingSchemes:[],
+    ids:[]
   });
 
-  // Chatbot states
-  const [question, setQuestion] = useState<string>("");
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch projects with current filters, pagination, sorting
   const fetchProjects = () => {
-    const query = new URLSearchParams({
-      page: page.toString(),
-      search,
-      status: statusFilter,
-      legalBasis: legalFilter,
-      organization: orgFilter,
-      country: countryFilter,
-      fundingScheme: fundingSchemeFilter,
-      proj_id: idFilter,
-      sortField,
-      sortOrder,
-    }).toString();
-
-    fetch(`/api/projects?${query}`)
-      .then((res) => res.json())
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&proj_id=${idFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
+      .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
-      .catch((err) => console.error("Error fetching projects:", err));
+      .catch(console.error);
   };
 
-  // Fetch stats with debouncing to limit requests
-  const fetchStats = debounce((filterParams: FilterState) => {
-    const query = new URLSearchParams(filterParams as any).toString();
-    fetch(`/api/stats?${query}`)
-      .then((res) => res.json())
+  const fetchStats = debounce((filters: FilterState) => {
+    const params = new URLSearchParams(filters);
+    fetch(`/api/stats?${params.toString()}`)
+      .then(res => res.json())
       .then((data: Stats) => setStats(data))
-      .catch((err) => console.error("Error fetching stats:", err));
+      .catch(console.error);
   }, 500);
 
-  // Fetch available filter options based on dataset and active filters
-  const fetchAvailableFilters = (filterParams: FilterState) => {
-    const query = new URLSearchParams(filterParams as any).toString();
-    fetch(`/api/filters?${query}`)
-      .then((res) => res.json())
-      .then((data) => {
+  const fetchAvailableFilters = (filters: FilterState) => {
+    const params = new URLSearchParams(filters);
+    fetch(`/api/filters?${params.toString()}`)
+      .then(res => res.json())
+      .then((data: Omit<AvailableFilters, 'statuses'>) => {
         setAvailableFilters({
           statuses: ["SIGNED", "CLOSED", "TERMINATED", "UNKNOWN"],
           organizations: data.organizations,
           countries: data.countries,
           legalBases: data.legalBases,
           fundingSchemes: data.fundingSchemes,
-          ids: [],
+          ids: []
         });
-      })
-      .catch((err) => console.error("Error fetching filters:", err));
+      });
   };
-
   interface RagResponse {
     answer: string;
     source_ids: string[];
   }
 
-  // Handle chat submission
   const askChatbot = async () => {
-    if (!question.trim() || loading) return;
-
-    // Append user message
-    setChatHistory((prev) => [...prev, { role: "user", content: question }]);
+    if (!question.trim() || loading) return;          
+    const newChat: ChatMessage[] = [
+      ...chatHistory,
+      { role: "user", content: question },
+    ];
+    setChatHistory(newChat);
     setQuestion("");
-    setLoading(true);
+    setLoading(true);                                      
 
-    // Add placeholder while generating
-    setChatHistory((prev) => [...prev, { role: "assistant", content: "Generating answer..." }]);
+    // 1) placeholder
+    setChatHistory((h) => [
+      ...h,
+      { role: "assistant", content: "Generating answer..." },
+    ]);
 
     try {
-      const response = await fetch("/api/rag", {
+      const res = await fetch("/api/rag", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: question }),
       });
 
-      const text = await response.text();
-      if (!response.ok) {
-        let detail = text;
-        try { detail = JSON.parse(text).detail; } catch {}
-        throw new Error(detail);
+      const text = await res.text();
+      if (!res.ok) {
+        let errDetail = text;
+        try {
+          errDetail = JSON.parse(text).detail;
+        } catch {}
+        throw new Error(errDetail);
       }
 
-      const result: RagResponse = JSON.parse(text);
-      const sources = result.source_ids.length ? result.source_ids.join(", ") : "none";
-      const assistantContent = `${result.answer}\n\nSources: ${sources}`;
+      const data: RagResponse = JSON.parse(text);
+      const idList = data.source_ids.join(", ") || "none";
+      const assistantContent = `${data.answer}
 
-      // Replace placeholder with actual answer
-      setChatHistory((prev) => [...prev.slice(0, -1), { role: "assistant", content: assistantContent }]);
+The output was based on the following Project IDs: ${idList}`;
+
+      // 2) replace placeholder with real answer
+      setChatHistory((h) => [
+        ...h.slice(0, -1),
+        { role: "assistant", content: assistantContent },
+      ]);
     } catch (err: any) {
-      // Replace placeholder with error message
-      setChatHistory((prev) => [
-        ...prev.slice(0, -1),
-        { role: "assistant", content: `Error: ${err.message}` },
+      // replace placeholder with error message
+      setChatHistory((h) => [
+        ...h.slice(0, -1),
+        {
+          role: "assistant",
+          content: `Something went wrong: ${err.message}`,
+        },
       ]);
     } finally {
       setLoading(false);
+      // scroll to bottom
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  // Effects: refetch when filters/sorting/pagination change
   useEffect(() => {
+    // If the user has typed something but it's too short, don't refetch
     fetchProjects();
-  }, [page, search, statusFilter, legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
+  }, [
+    page,
+    search,
+    statusFilter,
+    legalFilter,
+    orgFilter,
+    countryFilter,
+    fundingSchemeFilter,
+    idFilter,
+    sortField,
+    sortOrder,
+  ]);
 
   useEffect(() => {
+    console.log("Updated filters:", filters);
     fetchStats(filters);
-  }, [filters]);
-
-  useEffect(() => {
-    fetchAvailableFilters(filters);
-  }, [filters]);
+    }, [filters]);
+  useEffect(() => fetchAvailableFilters(filters), [filters]);
 
   return {
-    selectedProject: projects[0] || null,
-    dashboardProps: { stats, filters, setFilters, availableFilters },
+    selectedProject,
+    dashboardProps: {
+      stats,
+      filters,
+      setFilters,
+      availableFilters
+    },
     explorerProps: {
       projects,
       search,
@@ -191,28 +191,29 @@ export const useAppState = () => {
       setFundingSchemeFilter,
       idFilter,
       setIdFilter,
-      sortField,
       setSortField,
-      sortOrder,
+      sortField,
       setSortOrder,
+      sortOrder,
       page,
       setPage,
-      setSelectedProject: () => {},
+      setSelectedProject,
       question,
       setQuestion,
       chatHistory,
+      setChatHistory,
       askChatbot,
       loading,
-      messagesEndRef,
+      messagesEndRef
     },
     detailsProps: {
-      project: projects[0]!,
+      project: selectedProject!,
       question,
       setQuestion,
       chatHistory,
       askChatbot,
       loading,
-      messagesEndRef,
-    },
+      messagesEndRef
+    }
   };
 };
