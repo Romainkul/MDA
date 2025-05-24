@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 100
     hybrid_k:      int = 2
     assistant_role: str = (
-        "You are a knowledgeable project analyst.  You have access to the following retrieved document snippets (with Project IDs in [brackets])"
+        "You are a knowledgeable project analyst.  You have access to the following retrieved document snippets."
     )
     skip_warmup: bool = True
     allowed_origins: List[str] = ["*"]
@@ -705,7 +705,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     prompt = PromptTemplate.from_template(
         f"{settings.assistant_role} \n\n"
-        "You have the following retrieved document snippets (with Project IDs in [brackets]):\n"
         "{context}\n"
         "User Question:\n"
         "{question}\n"
