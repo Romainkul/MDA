@@ -661,7 +661,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
-        device_map="auto"
+        #device_map="auto"
     )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
