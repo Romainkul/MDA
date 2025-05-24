@@ -703,24 +703,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing Hybrid Retriever")
     retriever = HybridRetriever(vs=vs, ix=ix, compressor=compressor, cross_encoder=cross_encoder)
     
-    prompt = PromptTemplate.from_template(f"""
-        {settings.assistant_role}
-
-        You have the following retrieved document snippets (with Project IDs in [brackets]):
-
-        {context}
-
-        User Question:
-        {question}
-
-        Please answer thoroughly, following these rules:
-        1. Write at least 4-6 full sentences.
-        2. Use clear, technical language in full sentences.
-        3. Cite any document you reference by including its ID in [brackets] inline.
-        4. Conclude with high-level insights or recommendations.
-
-        Answer:
-        """.strip())
+    prompt = PromptTemplate.from_template(
+        f"{settings.assistant_role} \n\n"
+        "You have the following retrieved document snippets (with Project IDs in [brackets]):\n"
+        "{context}\n"
+        "User Question:\n"
+        "{question}\n"
+        "Please answer thoroughly, following these rules:\n"
+        "1. Write at least 4-6 full sentences.\n"
+        "2. Use clear, technical language in full sentences.\n"
+        "3. Cite any document you reference by including its ID in [brackets] inline.\n"
+        "4. Conclude with high-level insights or recommendations.\n"
+        "Answer:")
 
     logger.info("Initializing Retrieval Chain")
     app.state.rag_chain = ConversationalRetrievalChain.from_llm(
