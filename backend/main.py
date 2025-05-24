@@ -659,7 +659,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         model=llm_model,
         tokenizer=AutoTokenizer.from_pretrained(settings.llm_model,use_fast= False),
         device=-1,              # force CPU
-        do_sample=True,
         temperature=0.7,
         max_new_tokens=512,
         do_sample=False,
