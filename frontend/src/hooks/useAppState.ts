@@ -75,7 +75,7 @@ export const useAppState = () => {
           countries: data.countries,
           legalBases: data.legalBases,
           fundingSchemes: data.fundingSchemes,
-          ids: data.ids
+          //ids: data.ids
         });
       });
   };
@@ -143,7 +143,24 @@ The output was based on the following Project IDs: ${idList}`;
     }
   };
 
-  useEffect(fetchProjects, [page, search, statusFilter,legalFilter, orgFilter, countryFilter, fundingSchemeFilter, idFilter, sortField, sortOrder]);
+  useEffect(() => {
+    // If the user has typed something but it's too short, don't refetch
+    if (search.length > 0 && search.length < 3) {
+      return;
+    }
+    fetchProjects();
+  }, [
+    page,
+    search,
+    statusFilter,
+    legalFilter,
+    orgFilter,
+    countryFilter,
+    fundingSchemeFilter,
+    idFilter,
+    sortField,
+    sortOrder,
+  ]);
   
   useEffect(() => {
     console.log("Updated filters:", filters);
