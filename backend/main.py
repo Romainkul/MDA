@@ -644,7 +644,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Seq2seq pipeline
     logger.info("Initializing Pipeline")
     #full_model=AutoModelForSeq2SeqLM.from_pretrained(settings.llm_model)
-    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model)
+    full_model = AutoModelForCausalLM.from_pretrained(settings.llm_model, device_map="auto")
 
     # Apply dynamic quantization to all Linear layers
     llm_model = torch.quantization.quantize_dynamic(
@@ -661,6 +661,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         max_new_tokens=256,
         do_sample=True,
         temperature=0.7,
+        device_map="auto"
     )
     # Wrap in LangChain's HuggingFacePipeline
     llm = HuggingFacePipeline(pipeline=gen_pipe)
