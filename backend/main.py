@@ -157,7 +157,7 @@ async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Ind
         # Define your schema
         schema = Schema(
             id=ID(stored=True, unique=True),
-            content=TEXT(analyzer=StemmingAnalyzer()),
+            content=TEXT(stored=True, analyzer=StemmingAnalyzer()),
         )
 
         # Create and populate the index
