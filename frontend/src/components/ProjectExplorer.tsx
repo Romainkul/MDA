@@ -19,7 +19,6 @@ import {
   Avatar,
 } from "@chakra-ui/react";
 import type { ProjectExplorerProps, Project, ChatMessage } from "../hooks/types";
-import { i } from "framer-motion/client";
 
 interface FilterOptions {
   statuses: string[];
@@ -78,16 +77,13 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
 
   // Fetch dynamic filter options whenever any filter changes
   useEffect(() => {
-    if (search.length > 0 && search.length < MIN_SEARCH_LEN) {
-      return;
-    }
     setLoadingFilters(true);
     const params = new URLSearchParams();
     if (statusFilter)          params.set("status", statusFilter);
     if (legalFilter)           params.set("legalBasis", legalFilter);
     if (orgFilter)             params.set("organization", orgFilter);
     if (countryFilter)         params.set("country", countryFilter);
-    if (search)                params.set("search", search);
+    if (search.length >= MIN_SEARCH_LEN) params.set("search", search);
     if (idFilter.length >= MIN_SEARCH_LEN) params.set("proj_id", idFilter);
     if (fundingSchemeFilter)   params.set("fundingScheme", fundingSchemeFilter);
     params.set("sortField",     sortField);

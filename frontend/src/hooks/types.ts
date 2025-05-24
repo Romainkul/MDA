@@ -75,6 +75,8 @@ export interface AvailableFilters {
   organizations: string[];
   countries: string[];
   legalBases: string[];
+  fundingSchemes: string[];
+  ids: string[];
 }
 
 export interface ProjectExplorerProps {

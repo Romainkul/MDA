@@ -44,7 +44,9 @@ export const useAppState = () => {
     statuses: ["SIGNED", "CLOSED", "TERMINATED","UNKNOWN"],
     organizations: [],
     countries: [],
-    legalBases: []
+    legalBases: [],
+    fundingSchemes:[],
+    ids:[]
   });
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +77,7 @@ export const useAppState = () => {
           countries: data.countries,
           legalBases: data.legalBases,
           fundingSchemes: data.fundingSchemes,
-          //ids: data.ids
+          ids: []
         });
       });
   };
@@ -145,9 +147,6 @@ The output was based on the following Project IDs: ${idList}`;
 
   useEffect(() => {
     // If the user has typed something but it's too short, don't refetch
-    if (search.length > 0 && search.length < 3) {
-      return;
-    }
     fetchProjects();
   }, [
     page,
@@ -161,7 +160,7 @@ The output was based on the following Project IDs: ${idList}`;
     sortField,
     sortOrder,
   ]);
-  
+
   useEffect(() => {
     console.log("Updated filters:", filters);
     fetchStats(filters);
