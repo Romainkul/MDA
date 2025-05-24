@@ -15,7 +15,7 @@ import torch
 import zipfile
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, BaseSettings, PrivateAttr
+from pydantic import BaseModel, PrivateAttr
 from pydantic_settings import BaseSettings as SettingsBase
 from sentence_transformers import CrossEncoder
 from starlette.concurrency import run_in_threadpool
@@ -227,7 +227,7 @@ class RAGRequest(BaseModel):
 class RAGResponse(BaseModel):
     answer: str
     source_ids: List[str]
-    
+
 # ---------------------------------------------------------------------------- #
 #                                 RAG Endpoint                                  #
 # ---------------------------------------------------------------------------- #

@@ -1,81 +1,54 @@
-import os
+# Standard library
 import logging
-from typing import Any, Dict, List, Optional, Tuple, AsyncGenerator
+import os
+import shutil
+import tempfile
+import traceback
+import zipfile
 from contextlib import asynccontextmanager
+from functools import lru_cache
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
-import gcsfs
+# Third-party
 import aiofiles
+import faiss
+import gcsfs
 import polars as pl
-from pydantic_settings import BaseSettings
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel
+import pickle
+import torch
+from tqdm import tqdm
 
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, PrivateAttr
+from pydantic_settings import BaseSettings
+from sentence_transformers import CrossEncoder
+from starlette.concurrency import run_in_threadpool
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    T5ForConditionalGeneration,
+    T5Tokenizer,
+    pipeline,
+)
+
+from whoosh import index
+from whoosh.analysis import StemmingAnalyzer
+from whoosh.fields import ID, Schema, TEXT
+from whoosh.qparser import MultifieldParser
+
+# LangChain
 from langchain.schema import BaseRetriever, Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain.retrievers.document_compressors import DocumentCompressorPipeline
-from langchain_community.document_transformers import EmbeddingsRedundantFilter
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
-from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
-
-from transformers import AutoTokenizer, pipeline
-from transformers import AutoTokenizer, AutoModelForCausalLM
-#from optimum.onnxruntime import ORTModelForCausalLM, ORTOptimizer
-from sentence_transformers import CrossEncoder
-from whoosh import index
-from whoosh.fields import Schema, TEXT, ID
-from whoosh.analysis import StemmingAnalyzer
-from whoosh.qparser import MultifieldParser
-from tqdm import tqdm
-import faiss
-
-from functools import lru_cache
-from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-import traceback
-from starlette.concurrency import run_in_threadpool
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
-from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional, AsyncGenerator, Tuple
-
-import os
-import logging
-import aiofiles
-import polars as pl
-import zipfile
-import gcsfs
-
-from langchain.schema import Document,BaseRetriever
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
 from langchain.retrievers.document_compressors import DocumentCompressorPipeline
 from langchain_community.document_transformers import EmbeddingsRedundantFilter
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.chains import ConversationalRetrievalChain
-from langchain.prompts import PromptTemplate
+from langchain_community.vectorstores import FAISS as LCFAISS
 from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 
-from transformers import AutoTokenizer, pipeline, AutoModelForCausalLM, AutoModelForSeq2SeqLM, T5Tokenizer,T5ForConditionalGeneration
-from sentence_transformers import CrossEncoder
-
-from whoosh import index
-from whoosh.fields import Schema, TEXT, ID
-from whoosh.analysis import StemmingAnalyzer
-from whoosh.qparser import MultifieldParser
-import pickle
-from pydantic import PrivateAttr
-from tqdm import tqdm
-import faiss
-import torch
-import tempfile
-import shutil
-
-from functools import lru_cache
 
 # === Logging ===
 logging.basicConfig(level=logging.INFO)
