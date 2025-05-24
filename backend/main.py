@@ -435,96 +435,108 @@ async def build_or_load_faiss(
     batch_size: int = 15000
 ) -> FAISS:
     """
-    Always uses GCS if vectorstore_path starts with "gs://". Expects
-    a single ZIP archive at vectorstore_path + ".zip" containing:
+    Expects a ZIP at vectorstore_path + ".zip" containing:
       - index.faiss
       - index.pkl
+    If that ZIP exists on GCS, download & load only.
+    Otherwise, build from `docs`, save, ZIP & upload.
     """
     fs = gcsfs.GCSFileSystem()
     is_gcs = vectorstore_path.startswith("gs://")
+    zip_uri = vectorstore_path.rstrip("/") + ".zip"
 
-    # Local paths
-    local_zip  = "/tmp/faiss_index.zip"
-    local_dir  = "/tmp/faiss_store"
+    # Local staging paths
+    local_zip = "/tmp/faiss_index.zip"
+    local_dir = "/tmp/faiss_store"
+    idx_path  = os.path.join(local_dir, "index.faiss")
+    meta_path = os.path.join(local_dir, "index.pkl")
 
-    if is_gcs:
-        zip_uri = vectorstore_path.rstrip("/") + ".zip"
+    # ————————————————
+    # 1) LOAD FROM ZIP (if present)
+    # ————————————————
+    if is_gcs and await run_in_threadpool(fs.exists, zip_uri):
+        logger.info("Found FAISS ZIP on GCS; loading only.")
+        # clean slate
+        if os.path.exists(local_dir):
+            shutil.rmtree(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
 
-        # 1) Download ZIP from GCS (in threadpool)
+        # fetch ZIP
         await run_in_threadpool(fs.get, zip_uri, local_zip)
 
-        # 2) Extract ZIP to local_dir
-        os.makedirs(local_dir, exist_ok=True)
+        # extract
         def _extract():
             with zipfile.ZipFile(local_zip, "r") as zf:
                 zf.extractall(local_dir)
         await run_in_threadpool(_extract)
 
-    # Paths to extracted files
-    idx_path  = os.path.join(local_dir, "index.faiss")
-    meta_path = os.path.join(local_dir, "index.pkl")
-
-    # 3) If index not present locally, build from scratch
-    if not (os.path.exists(idx_path) and os.path.exists(meta_path)):
-        os.makedirs(local_dir, exist_ok=True)
-        logger.info("Creating FAISS Index")
-        vs: FAISS = None
-        # build in batches
-        for i in range(0, len(docs), batch_size):
-            batch = docs[i : i + batch_size]
-            if vs is None:
-                vs = FAISS.from_documents(batch, EMBEDDING)
-            else:
-                vs.add_documents(batch)
-
-        assert vs is not None, "No documents to index!"
-
-        # save to local_dir
-        vs.save_local(local_dir)
-
-        # 4) Re-zip and upload back to GCS
-        if is_gcs:
-            def _zip_dir():
-                with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-                    for root, _, files in os.walk(local_dir):
-                        for fname in files:
-                            path = os.path.join(root, fname)
-                            arcname = os.path.relpath(path, local_dir)
-                            zf.write(path, arcname)
-            await run_in_threadpool(_zip_dir)
-            await run_in_threadpool(fs.put, local_zip, zip_uri)
-    else:
-        logger.info("Loading FAISS Index")
-        # 5) Memory-map load existing index
-        # note: FAISS index file is read-only mapped
+        # memory-map load
         mmap_index = await run_in_threadpool(
             faiss.read_index, idx_path, faiss.IO_FLAG_MMAP
         )
 
-        # load metadata pickle
+        # load metadata
         with open(meta_path, "rb") as f:
             saved = pickle.load(f)
 
         # unpack metadata
         if isinstance(saved, tuple):
             # (score_fn, docstore, index_to_docstore)
-            _, docstore, index_to_docstore = saved if len(saved) == 3 else (None, *saved)
+            _, docstore, index_to_docstore = (
+                saved if len(saved) == 3
+                else (None, *saved)
+            )
         else:
-            docstore = getattr(saved, "docstore", getattr(saved, "_docstore"))
+            docstore = getattr(saved, "docstore", saved._docstore)
             index_to_docstore = getattr(
                 saved,
                 "index_to_docstore",
                 getattr(saved, "_index_to_docstore", saved._faiss_index_to_docstore)
             )
-        logger.info("Reconstructing FAISS Index")
-        # reconstruct the FAISS wrapper
+
+        # reconstruct FAISS wrapper
         vs = FAISS(
             embedding_function=EMBEDDING,
             index=mmap_index,
             docstore=docstore,
             index_to_docstore_id=index_to_docstore,
         )
-        logger.info("Done, FAISS Index")
+        logger.info("FAISS index loaded from ZIP.")
+        return vs
+
+    # ————————————————
+    # 2) BUILD FROM SCRATCH + UPLOAD
+    # ————————————————
+    logger.info("No FAISS ZIP found; building index from scratch.")
+    if os.path.exists(local_dir):
+        shutil.rmtree(local_dir)
+    os.makedirs(local_dir, exist_ok=True)
+
+    vs: FAISS = None
+    for i in range(0, len(docs), batch_size):
+        batch = docs[i : i + batch_size]
+        if vs is None:
+            vs = FAISS.from_documents(batch, EMBEDDING)
+        else:
+            vs.add_documents(batch)
+    assert vs is not None, "No documents to index!"
+
+    # save locally
+    vs.save_local(local_dir)
+
+    # zip up and push to GCS (if needed)
+    if is_gcs:
+        def _zip_dir():
+            with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(local_dir):
+                    for fname in files:
+                        path = os.path.join(root, fname)
+                        arc = os.path.relpath(path, local_dir)
+                        zf.write(path, arc)
+        await run_in_threadpool(_zip_dir)
+        await run_in_threadpool(fs.put, local_zip, zip_uri)
+        logger.info("Built FAISS index and uploaded ZIP to GCS.")
+
     return vs
 
 # === Index Builder ===
