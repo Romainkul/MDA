@@ -123,44 +123,48 @@ async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Ind
 
 async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Index:
     """
-    Always uses GCS if whoosh_dir starts with "gs://". Expects a single
-    whoosh index archive at whoosh_dir + ".zip". If that archive exists, it
-    will be downloaded and extracted; otherwise the index is built from docs
-    and the archive is uploaded to GCS.
+    If gs://.../whoosh_index.zip exists, download & extract it once.
+    Otherwise build locally from docs and upload the ZIP back to GCS.
     """
-    logger.info(f"Building whoosh")
     fs = gcsfs.GCSFileSystem()
     is_gcs = whoosh_dir.startswith("gs://")
+    zip_uri = whoosh_dir.rstrip("/") + ".zip"
 
-    # Local paths
     local_zip = "/tmp/whoosh_index.zip"
     local_dir = "/tmp/whoosh_index"
 
-    if is_gcs:
-        # GCS URI for the zip
-        zip_uri = whoosh_dir.rstrip("/") + ".zip"
+    # Clean slate
+    if os.path.exists(local_dir):
+        shutil.rmtree(local_dir)
+    os.makedirs(local_dir, exist_ok=True)
 
-        # 1) Download the zip (blocking I/O in threadpool)
+    # 1️⃣ Try downloading the ZIP if it exists on GCS
+    if is_gcs and await run_in_threadpool(fs.exists, zip_uri):
+        logger.info("Found whoosh_index.zip on GCS; downloading…")
         await run_in_threadpool(fs.get, zip_uri, local_zip)
+        # Extract all files (flat) into local_dir
+        with zipfile.ZipFile(local_zip, "r") as zf:
+            for member in zf.infolist():
+                if member.is_dir():
+                    continue
+                filename = os.path.basename(member.filename)
+                if not filename:
+                    continue
+                target = os.path.join(local_dir, filename)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with zf.open(member) as src, open(target, "wb") as dst:
+                    dst.write(src.read())
+        logger.info("Whoosh index extracted from ZIP.")
+    else:
+        logger.info("No whoosh_index.zip found; building index from docs.")
 
-        # 2) Extract all files to local_dir
-        os.makedirs(local_dir, exist_ok=True)
-        def _extract():
-            with zipfile.ZipFile(local_zip, "r") as zf:
-                zf.extractall(local_dir)
-        await run_in_threadpool(_extract)
-
-    # 3) If local_dir doesn't contain a Whoosh index, build it from scratch
-    if not index.exists_in(local_dir):
-        os.makedirs(local_dir, exist_ok=True)
-
-        # Define your schema
+        # Define the schema with stored content
         schema = Schema(
             id=ID(stored=True, unique=True),
             content=TEXT(stored=True, analyzer=StemmingAnalyzer()),
         )
 
-        # Create and populate the index
+        # Create the index
         ix = index.create_in(local_dir, schema)
         writer = ix.writer()
         for doc in docs:
@@ -169,24 +173,23 @@ async def build_whoosh_index(docs: List[Document], whoosh_dir: str) -> index.Ind
                 content=doc.page_content,
             )
         writer.commit()
+        logger.info("Whoosh index built locally.")
 
-        # If using GCS, re-zip and upload
+        # Upload the ZIP back to GCS
         if is_gcs:
-            def _zip_dir():
-                with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-                    for root, _, files in os.walk(local_dir):
-                        for fname in files:
-                            path = os.path.join(root, fname)
-                            arcname = os.path.relpath(path, local_dir)
-                            zf.write(path, arcname)
-            await run_in_threadpool(_zip_dir)
+            logger.info("Zipping and uploading new whoosh_index.zip to GCS…")
+            with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(local_dir):
+                    for fname in files:
+                        full = os.path.join(root, fname)
+                        arc = os.path.relpath(full, local_dir)
+                        zf.write(full, arc)
             await run_in_threadpool(fs.put, local_zip, zip_uri)
+            logger.info("Uploaded whoosh_index.zip to GCS.")
 
-    # 4) Open and return the Whoosh index
+    # 2️⃣ Finally open the index and return it
     ix = index.open_dir(local_dir)
-    logger.info(f"Building Whoosh finished")
     return ix
-
 
 # === Document Loader ===
 async def load_documents(
