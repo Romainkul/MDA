@@ -274,7 +274,7 @@ export default function ProjectDetails({
         {shapData?.length ? (
           <>
             <Text mb={2}><strong>Predicted Label:</strong> {predicted === 1 ? 'Terminated' : 'Closed'}</Text>
-            <Text mb={4}><strong>Probability:</strong> {(probability * 100).toFixed(2)}%</Text>
+            <Text mb={4}><strong>Probability:</strong> {predicted === 1 ? (probability * 100).toFixed(2) : ((1-probability) * 100).toFixed(2) }%</Text>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={shapData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
