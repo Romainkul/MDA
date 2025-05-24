@@ -37,6 +37,7 @@ from tqdm import tqdm
 import faiss
 import torch
 import tempfile
+import shutil
 
 from functools import lru_cache
 
@@ -50,8 +51,8 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     # Parquet + Whoosh/FAISS
     parquet_path: str = "gs://mda_eu_project/data/consolidated_clean_pred.parquet"
-    whoosh_dir:    str = "gs://mda_eu_project/whoosh_index"
-    vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
+    whoosh_dir:    str = "gs://mda_eu_project/whoosh_index.zip"
+    vectorstore_path: str = "gs://mda_eu_project/vectorstore_index.zip"
     # Models
     embedding_model:     str = "sentence-transformers/LaBSE"
     llm_model:           str = "bigscience/bloomz-560m"#"bigscience/bloom-1b7"#"google/mt5-small"#"bigscience/bloom-3b"#"RedHatAI/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
@@ -438,22 +439,18 @@ async def build_or_load_faiss(
     Expects a ZIP at vectorstore_path + ".zip" containing:
       - index.faiss
       - index.pkl
-    If that ZIP exists on GCS, download & load only.
-    Otherwise, build from `docs`, save, ZIP & upload.
+    Files may be nested under a subfolder (e.g. vectorstore_index_colab/).
+    If the ZIP exists on GCS, download & load only.
+    Otherwise, build from `docs`, save, re-zip, and upload.
     """
     fs = gcsfs.GCSFileSystem()
     is_gcs = vectorstore_path.startswith("gs://")
     zip_uri = vectorstore_path.rstrip("/") + ".zip"
 
-    # Local staging paths
     local_zip = "/tmp/faiss_index.zip"
     local_dir = "/tmp/faiss_store"
-    idx_path  = os.path.join(local_dir, "index.faiss")
-    meta_path = os.path.join(local_dir, "index.pkl")
 
-    # ————————————————
-    # 1) LOAD FROM ZIP (if present)
-    # ————————————————
+    # 1) if ZIP exists, download & extract
     if is_gcs and await run_in_threadpool(fs.exists, zip_uri):
         logger.info("Found FAISS ZIP on GCS; loading only.")
         # clean slate
@@ -461,7 +458,7 @@ async def build_or_load_faiss(
             shutil.rmtree(local_dir)
         os.makedirs(local_dir, exist_ok=True)
 
-        # fetch ZIP
+        # download zip
         await run_in_threadpool(fs.get, zip_uri, local_zip)
 
         # extract
@@ -469,6 +466,17 @@ async def build_or_load_faiss(
             with zipfile.ZipFile(local_zip, "r") as zf:
                 zf.extractall(local_dir)
         await run_in_threadpool(_extract)
+
+        # locate the two files anywhere under local_dir
+        idx_path = None
+        meta_path = None
+        for root, _, files in os.walk(local_dir):
+            if "index.faiss" in files:
+                idx_path = os.path.join(root, "index.faiss")
+            if "index.pkl" in files:
+                meta_path = os.path.join(root, "index.pkl")
+        if not idx_path or not meta_path:
+            raise FileNotFoundError("Couldn't find index.faiss or index.pkl in extracted ZIP.")
 
         # memory-map load
         mmap_index = await run_in_threadpool(
@@ -481,10 +489,8 @@ async def build_or_load_faiss(
 
         # unpack metadata
         if isinstance(saved, tuple):
-            # (score_fn, docstore, index_to_docstore)
             _, docstore, index_to_docstore = (
-                saved if len(saved) == 3
-                else (None, *saved)
+                saved if len(saved) == 3 else (None, *saved)
             )
         else:
             docstore = getattr(saved, "docstore", saved._docstore)
@@ -494,7 +500,7 @@ async def build_or_load_faiss(
                 getattr(saved, "_index_to_docstore", saved._faiss_index_to_docstore)
             )
 
-        # reconstruct FAISS wrapper
+        # reconstruct FAISS
         vs = FAISS(
             embedding_function=EMBEDDING,
             index=mmap_index,
@@ -504,9 +510,7 @@ async def build_or_load_faiss(
         logger.info("FAISS index loaded from ZIP.")
         return vs
 
-    # ————————————————
-    # 2) BUILD FROM SCRATCH + UPLOAD
-    # ————————————————
+    # 2) otherwise, build from scratch and upload
     logger.info("No FAISS ZIP found; building index from scratch.")
     if os.path.exists(local_dir):
         shutil.rmtree(local_dir)
@@ -524,20 +528,21 @@ async def build_or_load_faiss(
     # save locally
     vs.save_local(local_dir)
 
-    # zip up and push to GCS (if needed)
     if is_gcs:
+        # re-zip all contents of local_dir (flattened)
         def _zip_dir():
             with zipfile.ZipFile(local_zip, "w", zipfile.ZIP_DEFLATED) as zf:
                 for root, _, files in os.walk(local_dir):
                     for fname in files:
-                        path = os.path.join(root, fname)
-                        arc = os.path.relpath(path, local_dir)
-                        zf.write(path, arc)
+                        full = os.path.join(root, fname)
+                        arc = os.path.relpath(full, local_dir)
+                        zf.write(full, arc)
         await run_in_threadpool(_zip_dir)
         await run_in_threadpool(fs.put, local_zip, zip_uri)
         logger.info("Built FAISS index and uploaded ZIP to GCS.")
 
     return vs
+
 
 # === Index Builder ===
 async def build_indexes(
