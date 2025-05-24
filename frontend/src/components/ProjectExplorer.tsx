@@ -29,7 +29,7 @@ interface FilterOptions {
   fundingSchemes: string[];
   ids: string[];
 }
-const MIN_SEARCH_LEN = 5;
+const MIN_SEARCH_LEN = 3;
 
 type SortField = keyof Pick<Project, 'title' | 'status' | 'id' | 'startDate' | 'fundingScheme' | 'ecMaxContribution'>;
 
@@ -78,25 +78,38 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
 
   // Fetch dynamic filter options whenever any filter changes
   useEffect(() => {
+    if (search.length > 0 && search.length < MIN_SEARCH_LEN) {
+      return;
+    }
     setLoadingFilters(true);
     const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (legalFilter)  params.set("legalBasis", legalFilter);
-    if (orgFilter)    params.set("organization", orgFilter);
-    if (countryFilter) params.set("country", countryFilter);
-    if (search)       params.set("search", search);
+    if (statusFilter)          params.set("status", statusFilter);
+    if (legalFilter)           params.set("legalBasis", legalFilter);
+    if (orgFilter)             params.set("organization", orgFilter);
+    if (countryFilter)         params.set("country", countryFilter);
+    if (search)                params.set("search", search);
     if (idFilter.length >= MIN_SEARCH_LEN) params.set("proj_id", idFilter);
-    if (fundingSchemeFilter) params.set("fundingScheme", fundingSchemeFilter);
-    params.set("sortField", sortField);
-    params.set("sortOrder", sortOrder);
+    if (fundingSchemeFilter)   params.set("fundingScheme", fundingSchemeFilter);
+    params.set("sortField",     sortField);
+    params.set("sortOrder",     sortOrder);
 
     fetch(`/api/filters?${params.toString()}`)
       .then((res) => res.json())
       .then((data: FilterOptions) => setFilterOpts(data))
       .catch(console.error)
       .finally(() => setLoadingFilters(false));
-  }, [statusFilter, legalFilter, orgFilter, countryFilter, search, idFilter, fundingSchemeFilter]);
-  
+  }, [
+    statusFilter,
+    legalFilter,
+    orgFilter,
+    countryFilter,
+    search,
+    idFilter,
+    fundingSchemeFilter,
+    sortField,
+    sortOrder,
+  ]);
+    
   const fmtNum = (num: number | null | undefined): string =>
     num != null
       ? num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -116,7 +129,6 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     setter(value);
     setPage(0);
   };
-
 
   return (
     <Flex direction={{ base: "column", md: "row" }} gap={6}>
