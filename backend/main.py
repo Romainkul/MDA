@@ -27,6 +27,7 @@ from transformers import (  # Transformers for LLM pipeline
     pipeline,
     T5ForConditionalGeneration,
     T5Tokenizer,
+    GenerationConfig
 )
 
 # LangChain imports for RAG
@@ -64,7 +65,7 @@ class Settings(SettingsBase):
     # RAG parameters
     chunk_size: int = 750
     chunk_overlap: int = 100
-    hybrid_k: int = 2
+    hybrid_k: int = 4
     assistant_role: str = (
         "You are a knowledgeable project analyst. You have access to the following retrieved document snippets."
     )
@@ -127,15 +128,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     model = torch.quantization.quantize_dynamic(
         model, {torch.nn.Linear}, dtype=torch.qint8
     )
+    gen_config = GenerationConfig(
+        max_new_tokens=350,
+        do_sample=True,
+        temperature=0.8,
+        top_k=30,
+        top_p=0.95,
+        repetition_penalty=1.2,
+        no_repeat_ngram_size=3,
+        use_cache=True,
+    )
+
+    # assemble the pipeline
     gen_pipe = pipeline(
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
         device=-1,
-        max_new_tokens=256,
-        do_sample=True,
-        temperature=0.7,
-        repetition_penalty=1.2
+        generation_config=gen_config
     )
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
