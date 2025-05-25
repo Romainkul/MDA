@@ -26,8 +26,7 @@ from transformers import (  # Transformers for LLM pipeline
     AutoTokenizer,
     pipeline,
     T5ForConditionalGeneration,
-    T5Tokenizer,
-    GenerationConfig
+    T5Tokenizer
 )
 
 # LangChain imports for RAG
@@ -128,8 +127,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     model = torch.quantization.quantize_dynamic(
         model, {torch.nn.Linear}, dtype=torch.qint8
     )
-    gen_config = GenerationConfig(
-        max_new_tokens=350,
+
+    # assemble the pipeline
+    gen_pipe = pipeline(
+        "text2text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        device=-1,
+        max_new_tokens=256,
         do_sample=True,
         temperature=0.8,
         top_k=30,
@@ -139,14 +144,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         use_cache=True,
     )
 
-    # assemble the pipeline
-    gen_pipe = pipeline(
-        "text2text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        device=-1,
-        generation_config=gen_config
-    )
     llm = HuggingFacePipeline(pipeline=gen_pipe)
 
     # 4) Initialize conversation memory
@@ -230,7 +227,6 @@ app.add_middleware(
 # ---------------------------------------------------------------------------- #
 #                                 Pydantic Models                             #
 # ---------------------------------------------------------------------------- #
-
 class RAGRequest(BaseModel):
     session_id: Optional[str] = None  # Optional conversation ID
     query: str  # User's query text
@@ -242,7 +238,6 @@ class RAGResponse(BaseModel):
 # ---------------------------------------------------------------------------- #
 #                                 RAG Endpoint                                  #
 # ---------------------------------------------------------------------------- #
-
 def rag_chain_depender(app: FastAPI = Depends(lambda: app)) -> Any:
     """
     Dependency injector to retrieve the initialized RAG chain from the application state.
@@ -299,7 +294,6 @@ async def ask_rag(
 # ---------------------------------------------------------------------------- #
 #                                  Data Endpoints                               #
 # ---------------------------------------------------------------------------- #
-
 @app.get("/api/projects")
 def get_projects(
     page: int = 0,
