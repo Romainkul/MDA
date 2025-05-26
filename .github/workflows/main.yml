@@ -15,4 +15,4 @@ jobs:
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push https://Rom89823974978:$HF_TOKEN@huggingface.co/spaces/Rom89823974978/MDA main
+        run: git push --force https://Rom89823974978:$HF_TOKEN@huggingface.co/spaces/Rom89823974978/MDA main
