@@ -1,4 +1,5 @@
-name: Sync to Hugging Face hub
+name: Sync to Hugging Face Space
+# This workflow syncs the repository to a Hugging Face Space on push to main branch or manually via workflow dispatch.
 on:
   push:
     branches: [main]
