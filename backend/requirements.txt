@@ -14,7 +14,7 @@ gcsfs==2024.12.0
 google-cloud-storage==2.11.0
 
 # RAG & embeddings
-pytorch-lightning==2.5.1           
+pytorch-lightning==2.5.1
 langchain
 langchain-huggingface
 sentence-transformers
@@ -44,3 +44,14 @@ HuggingFace
 huggingface_hub
 huggingface_hub[hf_xet]
 
+# ————————————————————————————————————————————————
+
+joblib
+shap
+matplotlib
+scipy
+scikit-learn
+imbalanced-learn
+xgboost
+evidently
+optuna
