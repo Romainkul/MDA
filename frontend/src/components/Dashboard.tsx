@@ -216,8 +216,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
       <SimpleGrid columns={{ base:1, md:2, lg:3 }} spacing={6}>
         {chartOrder.map(({key,name, type }) => {
-          const raw = statsData[key]!;
-          if (!raw) return null;
+          const raw = statsData[key];
+          if (!raw || !Array.isArray(raw.labels) || !Array.isArray(raw.values)) {
+            console.warn(`Skipping chart ${key}, no data:`, raw);
+            return null;
+          }
           // ---- properly typed Chart.js data & options ----
           if (type === "bar") {
             const data: ChartData<"bar", number[], string> = {
