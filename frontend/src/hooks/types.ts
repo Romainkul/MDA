@@ -55,6 +55,8 @@ export interface FilterState {
   topics: string;
   minYear: string;
   maxYear: string;
+  minEndYear: string;
+  maxEndYear: string;
   minFunding: string;
   maxFunding: string;
 }

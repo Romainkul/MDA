@@ -35,6 +35,8 @@ export const useAppState = () => {
     topics: "",
     minYear: "2000",
     maxYear: "2025",
+    minEndYear: "2000",
+    maxEndYear: "2035",
     minFunding: "0",
     maxFunding: "10000000",
     });

@@ -467,6 +467,12 @@ def get_stats(request: Request):
     if y2 := params.get("maxYear"):
         lf = lf.filter(pl.col("startDate").dt.year() <= int(y2))
         df = df.filter(pl.col("startDate").dt.year() <= int(y2))
+    if ye1 := params.get("minEndYear"):
+        lf = lf.filter(pl.col("endDate").dt.year() >= int(ye1))
+        df = df.filter(pl.col("endDate").dt.year() >= int(ye1))
+    if ye2 := params.get("maxEndYear"):
+        lf = lf.filter(pl.col("endDate").dt.year() <= int(ye2))
+        df = df.filter(pl.col("endDate").dt.year() <= int(ye2))
 
     # Helper to drop any None/null entries
     def clean_data(labels: list, values: list) -> tuple[list, list]:

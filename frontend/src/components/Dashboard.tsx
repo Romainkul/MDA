@@ -111,10 +111,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       setFilters(prev => ({ ...prev, [key]: opt?.value || "" }));
 
   const updateSlider = (
-    k1: 'minYear' | 'minFunding',
-    k2: 'maxYear' | 'maxFunding'
+    k1: 'minYear' | 'minFunding' | 'minEndYear',
+    k2: 'maxYear' | 'maxFunding' | 'maxEndYear'
   ) => ([min, max]: number[]) =>
-    setFilters(prev => ({ ...prev, [k1]: String(min), [k2]: String(max) }));
+    setFilters(prev => ({
+      ...prev,
+      [k1]: String(min),
+      [k2]: String(max),
+    }));
 
   const filterKeys: Array<keyof FilterState> = [
     'status', 'organization', 'country', 'legalBasis','topics'
@@ -128,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     <Box>
       {/* Filters */}
       <Box borderWidth="1px" borderRadius="lg" p={4} mb={6} bg="gray.50">
-        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2,1fr)', md: 'repeat(4,1fr)', lg: 'repeat(6,1fr)' }} gap={4}>
+        <Grid templateColumns={{ base: '1fr', sm: 'repeat(2,1fr)', md: 'repeat(4,1fr)', lg: 'repeat(6,1fr)' }} gap={6}>
           {filterKeys.map(key => {
             const opts = availableFilters[
               key === 'status' ? 'statuses'
@@ -152,17 +156,18 @@ const Dashboard: React.FC<DashboardProps> = ({
               </GridItem>
             );
           })}
-          {/* Year Range */}
+          
+          {/* Start Year */}
           <GridItem colSpan={{ base: 1, md: 2 }}>
             <Box mb={6}>
               <Flex justify="space-between" mb={1}>
-                <Text fontSize="sm" fontWeight="medium">Year Range</Text>
+                <Text fontSize="sm" fontWeight="medium">Start Year</Text>
                 <Text fontSize="xs" color="gray.600">
                   {filters.minYear} – {filters.maxYear}
                 </Text>
               </Flex>
               <RangeSlider
-                aria-label={["Min Year","Max Year"]}
+                aria-label={["Min Start Year","Max Start Year"]}
                 min={2000}
                 max={2025}
                 step={1}
@@ -170,9 +175,32 @@ const Dashboard: React.FC<DashboardProps> = ({
                 onChange={updateSlider("minYear","maxYear")}
                 size="md"
               >
-                <RangeSliderTrack>
-                  <RangeSliderFilledTrack />
-                </RangeSliderTrack>
+                <RangeSliderTrack><RangeSliderFilledTrack/></RangeSliderTrack>
+                <RangeSliderThumb index={0} boxSize={4}/>
+                <RangeSliderThumb index={1} boxSize={4}/>
+              </RangeSlider>
+            </Box>
+          </GridItem>
+
+          {/* End Year */}
+          <GridItem colSpan={{ base: 1, md: 2 }}>
+            <Box mb={6}>
+              <Flex justify="space-between" mb={1}>
+                <Text fontSize="sm" fontWeight="medium">End Year</Text>
+                <Text fontSize="xs" color="gray.600">
+                  {filters.minEndYear} – {filters.maxEndYear}
+                </Text>
+              </Flex>
+              <RangeSlider
+                aria-label={["Min End Year","Max End Year"]}
+                min={2000}
+                max={2025}
+                step={1}
+                defaultValue={[+filters.minEndYear, +filters.maxEndYear]}
+                onChange={updateSlider("minEndYear","maxEndYear")}
+                size="md"
+              >
+                <RangeSliderTrack><RangeSliderFilledTrack/></RangeSliderTrack>
                 <RangeSliderThumb index={0} boxSize={4}/>
                 <RangeSliderThumb index={1} boxSize={4}/>
               </RangeSlider>
