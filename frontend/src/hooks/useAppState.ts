@@ -195,6 +195,8 @@ The output was based on the following Project IDs: ${idList}`;
       setFundingSchemeFilter,
       idFilter,
       setIdFilter,
+      topicsFilter,
+      setTopicsFilter,
       setSortField,
       sortField,
       setSortOrder,
