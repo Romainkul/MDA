@@ -25,8 +25,10 @@ import {
   LineElement,
   PointElement,
   RadialLinearScale,
+  type ChartData,
+  type ChartOptions
 } from "chart.js";
-import { Bar, Pie, Doughnut, Line, Radar, PolarArea } from "react-chartjs-2";
+import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
 import type { FilterState, AvailableFilters } from "../hooks/types";
 
 // register chart components
@@ -43,15 +45,29 @@ ChartJS.register(
   RadialLinearScale
 );
 
-interface ChartData { labels: string[]; values: number[]; }
-interface Stats { [key: string]: ChartData; }
+type LegendPosition = "top" | "bottom" | "left" | "right" | "chartArea";
+interface ChartDataShape { labels: string[]; values: number[]; }
+interface Stats { [key: string]: ChartDataShape; }
+
+// define the six charts and their component types
+const chartOrder: { key: string; type: ChartType }[] = [
+  { key: "Projects per Year",          type: "line"     },
+  { key: "Project-Size Distribution",  type: "bar"      },
+  { key: "Co-funding Ratio by Scheme", type: "bar"      },
+  { key: "Top 10 Topics (€ M)",        type: "bar"      },
+  { key: "Funding Range Breakdown",    type: "pie"      },
+  { key: "Projects per Country",       type: "doughnut" },
+];
 
 const FILTER_LABELS: Record<keyof FilterState, string> = {
   status:       "Status",
   organization: "Organization",
   country:      "Country",
   legalBasis:   "Legal Basis",
+  topics:       "Topics",
 };
+
+type ChartType = "bar" | "pie" | "doughnut" | "line";
 
 interface DashboardProps {
   stats: Stats;
@@ -59,9 +75,6 @@ interface DashboardProps {
   setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   availableFilters: AvailableFilters;
 }
-
-const chartTypes = ["bar","pie","doughnut","line","radar","polarArea"] as const;
-type ChartType = typeof chartTypes[number];
 
 const Dashboard: React.FC<DashboardProps> = ({
   stats: initialStats,
@@ -104,7 +117,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     setFilters(prev => ({ ...prev, [k1]: String(min), [k2]: String(max) }));
 
   const filterKeys: Array<keyof FilterState> = [
-    'status', 'organization', 'country', 'legalBasis'
+    'status', 'organization', 'country', 'legalBasis','topics'
   ];
 
   if (loadingStats && !Object.keys(statsData).length) {
@@ -121,7 +134,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               key === 'status' ? 'statuses'
               : key === 'organization' ? 'organizations'
               : key === 'country' ? 'countries'
-              : 'legalBases'
+              : key === "legalBasis" ? "legalBases"
+              : 'topics'
             ] || [];
             const isOrg = key === 'organization';
             return (
@@ -201,23 +215,135 @@ const Dashboard: React.FC<DashboardProps> = ({
         </Flex>
       )}
       <SimpleGrid columns={{ base:1, md:2, lg:3 }} spacing={6}>
-        {Object.entries(statsData).map(([label, data], idx) => {
-          const type = chartTypes[idx % chartTypes.length] as ChartType;
-          const chartProps = {
-            data: { labels: data.labels, datasets: [{ label, data: data.values, backgroundColor: "#003399", borderColor: "#FFCC00", borderWidth: 1 }] },
-            options: { responsive: true, plugins: { legend: { position: "top" as const }, title: { display: true, text: label } } }
-          };
+        {chartOrder.map(({ key, type }) => {
+          const raw = statsData[key]!;
 
-          return (
-            <Box key={label} bg="white" borderRadius="md" p={4}>
-              {type === "bar"       && <Bar {...chartProps} />}
-              {type === "pie"       && <Pie {...chartProps} />}
-              {type === "doughnut"  && <Doughnut {...chartProps} />}
-              {type === "line"      && <Line {...chartProps} />}
-              {type === "radar"     && <Radar {...chartProps} />}
-              {type === "polarArea" && <PolarArea {...chartProps} />}
-            </Box>
-          );
+          // ---- properly typed Chart.js data & options ----
+          if (type === "bar") {
+            const data: ChartData<"bar", number[], string> = {
+              labels: raw.labels,
+              datasets: [
+                {
+                  label: key,
+                  data: raw.values,
+                  backgroundColor: "#003399",
+                  borderColor: "#FFCC00",
+                  borderWidth: 1,
+                },
+              ],
+            };
+            const options: ChartOptions<"bar"> = {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: "top" as LegendPosition,
+                },
+                title: {
+                  display: true,
+                  text: key,
+                },
+              },
+            };
+            return (
+              <Box key={key} bg="white" borderRadius="md" p={4}>
+                <Bar data={data} options={options} />
+              </Box>
+            );
+          }
+          if (type === "line") {
+            const data: ChartData<"line", number[], string> = {
+              labels: raw.labels,
+              datasets: [
+                {
+                  label: key,
+                  data: raw.values,
+                  backgroundColor: "#003399",
+                  borderColor: "#FFCC00",
+                  borderWidth: 1,
+                },
+              ],
+            };
+            const options: ChartOptions<"line"> = {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: "top" as LegendPosition,
+                },
+                title: {
+                  display: true,
+                  text: key,
+                },
+              },
+            };
+            return (
+              <Box key={key} bg="white" borderRadius="md" p={4}>
+                <Line data={data} options={options} />
+              </Box>
+            );
+          }
+          if (type === "pie") {
+            const data: ChartData<"pie", number[], string> = {
+              labels: raw.labels,
+              datasets: [
+                {
+                  label: key,
+                  data: raw.values,
+                  backgroundColor: "#003399",
+                  borderColor: "#FFCC00",
+                  borderWidth: 1,
+                },
+              ],
+            };
+            const options: ChartOptions<"pie"> = {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: "top" as LegendPosition,
+                },
+                title: {
+                  display: true,
+                  text: key,
+                },
+              },
+            };
+            return (
+              <Box key={key} bg="white" borderRadius="md" p={4}>
+                <Pie data={data} options={options} />
+              </Box>
+            );
+          }
+          if (type === "doughnut") {
+            const data: ChartData<"doughnut", number[], string> = {
+              labels: raw.labels,
+              datasets: [
+                {
+                  label: key,
+                  data: raw.values,
+                  backgroundColor: "#003399",
+                  borderColor: "#FFCC00",
+                  borderWidth: 1,
+                },
+              ],
+            };
+            const options: ChartOptions<"doughnut"> = {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: "top" as LegendPosition,
+                },
+                title: {
+                  display: true,
+                  text: key,
+                },
+              },
+            };
+            return (
+              <Box key={key} bg="white" borderRadius="md" p={4}>
+                <Doughnut data={data} options={options} />
+              </Box>
+            );
+          }
+          return null;
         })}
       </SimpleGrid>
     </Box>

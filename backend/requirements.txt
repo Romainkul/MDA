@@ -15,9 +15,9 @@ google-cloud-storage==2.11.0
 
 # RAG & embeddings
 pytorch-lightning==2.5.1
-langchain
-langchain-huggingface
-sentence-transformers
+langchain==0.3.25
+langchain-huggingface==0.2.0
+sentence-transformers==4.1.0
 langchain-community==0.3.24
 
 # Vector store
@@ -27,31 +27,31 @@ faiss-cpu==1.11.0
 whoosh==2.7.4
 
 # Transformers
-torch>=2.6.0
+torch==2.7.0
 blobfile>=1.5.0
 tiktoken>=0.4.0
 sentencepiece==0.2.0
-transformers
-torchvision
-sympy>=1.13.1
-peft
+transformers==4.62.3
+torchvision==0.22.0
+sympy==1.14.0
+peft==0.15.2
 
 aiofiles==24.1.0
 optimum==1.25.3
 bitsandbytes==0.45.5
-hf_xet
-HuggingFace
-huggingface_hub
-huggingface_hub[hf_xet]
+hf_xet==1.1.2
+HuggingFace==0.0.1
+huggingface_hub==0.32.1
+huggingface_hub[hf_xet]==0.32.1
 
 # ————————————————————————————————————————————————
-
-joblib
-shap
-matplotlib
-scipy
-scikit-learn
-imbalanced-learn
-xgboost
-evidently
-optuna
+# Predictive modeling
+joblib==1.5.1
+shap==0.47.2
+matplotlib==3.10.3
+scipy==1.15.3
+scikit-learn==1.6.1
+imbalanced-learn==0.13.0
+xgboost==3.0.2
+evidently==0.7.6
+optuna==4.3.0

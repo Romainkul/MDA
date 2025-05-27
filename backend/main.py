@@ -52,13 +52,13 @@ class Settings(SettingsBase):
     Configuration settings loaded from environment or .env file.
     """
     # Data sources
-    parquet_path: str = "gs://mda_eu_project/data/consolidated_clean_pred.parquet"
-    whoosh_dir: str = "gs://mda_eu_project/whoosh_index"
-    vectorstore_path: str = "gs://mda_eu_project/vectorstore_index"
+    parquet_path: str = "gs://mda_kul_project/data/consolidated_clean_pred.parquet"
+    whoosh_dir: str = "gs://mda_kul_project/whoosh_index"
+    vectorstore_path: str = "gs://mda_kul_project/vectorstore_index"
 
     # Model names
     embedding_model: str = "sentence-transformers/LaBSE"
-    llm_model: str = "google/flan-t5-base"
+    llm_model: str = "google/mt5-base"
     cross_encoder_model: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 
     # RAG parameters
@@ -305,6 +305,7 @@ def get_projects(
     country: str = "",
     fundingScheme: str = "",
     proj_id: str = "",
+    topic: str = "",
     sortOrder: str = "desc",
     sortField: str = "startDate",
 ):
@@ -317,6 +318,7 @@ def get_projects(
     - search: substring search in project title
     - status, legalBasis, organization, country, fundingScheme: filters
     - proj_id: exact project ID filter
+    - topic: filter by EuroSciVoc topic
     - sortOrder: 'asc' or 'desc'
     - sortField: field name to sort by (fallback to startDate)
 
@@ -344,6 +346,8 @@ def get_projects(
         sel = sel.filter(pl.col("_fundingScheme_lc").str.contains(fundingScheme.lower()))
     if proj_id:
         sel = sel.filter(pl.col("id") == int(proj_id))
+    if topic:
+        sel = sel.filter(pl.col("list_euroSciVocTitle").list.contains(topic))
 
     # Base columns to return
     base_cols = [
@@ -410,6 +414,8 @@ def get_filters(request: Request):
         df = df.filter(pl.col("list_name").list.contains(org))
     if c := params.get("country"):
         df = df.filter(pl.col("list_country").list.contains(c))
+    if t := params.get("topics"):
+        df = df.filter(pl.col("list_euroSciVocTitle").list.contains(t))
     if search := params.get("search"):
         df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
 
@@ -420,57 +426,175 @@ def get_filters(request: Request):
     return {
         "statuses":     normalize(df["status"].to_list()),
         "legalBases":   normalize(df["legalBasis"].to_list()),
-        "organizations": normalize(df["list_name"].explode().to_list())[:500],
+        "organizations": normalize(df["list_name"].explode().to_list()),
         "countries":    normalize(df["list_country"].explode().to_list()),
         "fundingSchemes": normalize(df["fundingScheme"].explode().to_list()),
+        "topics":       normalize(df["list_euroSciVocTitle"].explode().to_list()),
     }
 
 @app.get("/api/stats")
 def get_stats(request: Request):
     """
-    Compute annual statistics on projects with optional filters for status, legal basis, etc.
-
-    Returns a dict of chart data for projects per year.
+    Compute various statistics on projects with optional filters for status, legal basis, funding, etc.
+    Returns a dict of chart data.
     """
-    lf = app.state.df.lazy()
+    df = app.state.df
+    lf = df.lazy()
     params = request.query_params
 
-    # Apply lazy filters
+    # Apply filters
     if s := params.get("status"):
         lf = lf.filter(pl.col("_status_lc") == s.lower())
+        df = df.filter(pl.col("_status_lc") == s.lower())
     if lb := params.get("legalBasis"):
         lf = lf.filter(pl.col("_legalBasis_lc") == lb.lower())
+        df = df.filter(pl.col("_legalBasis_lc") == lb.lower())
     if org := params.get("organization"):
         lf = lf.filter(pl.col("list_name").list.contains(org))
+        df = df.filter(pl.col("list_name").list.contains(org))
     if c := params.get("country"):
         lf = lf.filter(pl.col("list_country").list.contains(c))
+        df = df.filter(pl.col("list_country").list.contains(c))
     if mn := params.get("minFunding"):
         lf = lf.filter(pl.col("ecMaxContribution") >= int(mn))
+        df = df.filter(pl.col("ecMaxContribution") >= int(mn))
     if mx := params.get("maxFunding"):
         lf = lf.filter(pl.col("ecMaxContribution") <= int(mx))
+        df = df.filter(pl.col("ecMaxContribution") <= int(mx))
     if y1 := params.get("minYear"):
         lf = lf.filter(pl.col("startDate").dt.year() >= int(y1))
+        df = df.filter(pl.col("startDate").dt.year() >= int(y1))
     if y2 := params.get("maxYear"):
         lf = lf.filter(pl.col("startDate").dt.year() <= int(y2))
+        df = df.filter(pl.col("startDate").dt.year() <= int(y2))
 
-    # Group by year and count
-    grouped = (
-        lf.select(pl.col("startDate").dt.year().alias("year"))
-          .group_by("year")
-          .agg(pl.count().alias("count"))
-          .sort("year")
-          .collect()
+    # 1) Projects per Year (Line)
+    yearly = (
+        lf
+        .select(pl.col("startDate").dt.year().alias("year"))
+        .group_by("year")
+        .agg(pl.count().alias("count"))
+        .sort("year")
+        .collect()
     )
-    years, counts = grouped["year"].to_list(), grouped["count"].to_list()
+    years = yearly["year"].to_list()
+    year_counts = yearly["count"].to_list()
 
-    # Return data ready for frontend charts
+    # 2) Project-Size Distribution by totalCost buckets (Bar)
+    size_buckets = (
+        df
+        .with_columns(
+            pl.when(pl.col("totalCost") < 100_000).then("<100 K")
+             .when(pl.col("totalCost") < 500_000).then("100 K–500 K")
+             .when(pl.col("totalCost") < 1_000_000).then("500 K–1 M")
+             .when(pl.col("totalCost") < 5_000_000).then("1 M–5 M")
+             .when(pl.col("totalCost") < 10_000_000).then("5 M–10 M")
+             .otherwise("≥10 M")
+             .alias("size_range")
+        )
+        .group_by("size_range")
+        .agg(pl.count().alias("count"))
+        # ensure our custom order
+        .with_columns(
+            pl.col("size_range").apply(
+                lambda x: ["<100 K","100 K–500 K","500 K–1 M","1 M–5 M","5 M–10 M","≥10 M"].index(x)
+            ).alias("order")
+        )
+        .sort("order")
+        .collect()
+    )
+    size_labels = size_buckets["size_range"].to_list()
+    size_counts = size_buckets["count"].to_list()
+
+    # 3) EU Co-funding Ratio by Scheme (Bar)
+    #  a) First, filter out bad records and compute ratio:
+    clean = (
+        df
+        # drop if either value is null or totalCost is zero
+        .filter(
+            pl.col("ecMaxContribution").is_not_null() &
+            pl.col("totalCost").is_not_null() &
+            (pl.col("totalCost") != 0)
+        )
+        # compute ecMaxContributionRatio as Float64
+        .with_columns(
+            (
+                pl.col("ecMaxContribution").cast(pl.Float64)
+                / pl.col("totalCost").cast(pl.Float64)
+            ).alias("ecMaxContributionRatio")
+        )
+    )
+
+    #  b) Explode by scheme and aggregate the mean of ratio
+    ratio = (
+        clean
+        .explode("fundingScheme")
+        .group_by("fundingScheme")
+        .agg(
+            pl.col("ecMaxContributionRatio").mean().alias("avg_ratio")
+        )
+        .sort("avg_ratio", descending=True)
+        .head(10)
+        .collect()
+    )
+
+    scheme_labels = ratio["fundingScheme"].to_list()
+    scheme_values = (ratio["avg_ratio"] * 100).round(1).to_list()  # now in percentage
+
+
+    # 4) Top 10 Macro Topics by EC Contribution (Bar)
+    top_topics = (
+        df
+        .explode("list_euroSciVocTitle")
+        .group_by("list_euroSciVocTitle")
+        .agg(pl.col("ecMaxContribution").sum().alias("total_ec"))
+        .sort("total_ec", descending=True)
+        .head(10)
+        .collect()
+    )
+    topic_labels = top_topics["list_euroSciVocTitle"].to_list()
+    topic_values = (top_topics["total_ec"] / 1e6).round(1).to_list()
+
+    # 5) Projects by Funding Range (Pie)
+    fund_range = (
+        df
+        .with_columns(
+            pl.when(pl.col("ecMaxContribution") < 100_000).then("<100 K")
+             .when(pl.col("ecMaxContribution") < 500_000).then("100 K–500 K")
+             .when(pl.col("ecMaxContribution") < 1_000_000).then("500 K–1 M")
+             .when(pl.col("ecMaxContribution") < 5_000_000).then("1 M–5 M")
+             .when(pl.col("ecMaxContribution") < 10_000_000).then("5 M–10 M")
+             .otherwise("≥10 M")
+             .alias("funding_range")
+        )
+        .group_by("funding_range")
+        .agg(pl.count().alias("count"))
+        .sort("funding_range")
+        .collect()
+    )
+    fr_labels = fund_range["funding_range"].to_list()
+    fr_counts = fund_range["count"].to_list()
+
+    # 6) Projects per Country (Doughnut)
+    country = (
+        df
+        .explode("list_country")
+        .group_by("list_country")
+        .agg(pl.count().alias("count"))
+        .sort("count", descending=True)
+        .head(10)
+        .collect()
+    )
+    country_labels = country["list_country"].to_list()
+    country_counts = country["count"].to_list()
+
     return {
-        "Projects per Year":    {"labels": years, "values": counts},
-        "Projects per Year 2":  {"labels": years, "values": counts},
-        "Projects per Year 3":  {"labels": years, "values": counts},
-        "Projects per Year 4":  {"labels": years, "values": counts},
-        "Projects per Year 5":  {"labels": years, "values": counts},
-        "Projects per Year 6":  {"labels": years, "values": counts},
+        "Projects per Year":          {"labels": years,          "values": year_counts},
+        "Project-Size Distribution":  {"labels": size_labels,    "values": size_counts},
+        "Co-funding Ratio by Scheme": {"labels": scheme_labels,  "values": scheme_values},
+        "Top 10 Topics (€ M)":        {"labels": topic_labels,   "values": topic_values},
+        "Funding Range Breakdown":    {"labels": fr_labels,      "values": fr_counts},
+        "Projects per Country":       {"labels": country_labels, "values": country_counts},
     }
 
 @app.get("/api/project/{project_id}/organizations")

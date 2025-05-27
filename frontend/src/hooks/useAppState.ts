@@ -24,6 +24,7 @@ export const useAppState = () => {
   const [countryFilter, setCountryFilter] = useState('');
   const [fundingSchemeFilter, setFundingSchemeFilter ] = useState('');
   const [idFilter, setIdFilter] = useState('');
+  const [topicsFilter, setTopicsFilter] = useState('');
   const [sortField, setSortField] = useState('');
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [filters, setFilters] = useState<FilterState>({
@@ -31,6 +32,7 @@ export const useAppState = () => {
     organization: "",
     country: "",
     legalBasis: "",
+    topics: "",
     minYear: "2000",
     maxYear: "2025",
     minFunding: "0",
@@ -46,13 +48,14 @@ export const useAppState = () => {
     countries: [],
     legalBases: [],
     fundingSchemes:[],
-    ids:[]
+    ids:[],
+    topics: []
   });
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjects = () => {
-    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&proj_id=${idFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
+    fetch(`/api/projects?page=${page}&search=${encodeURIComponent(search)}&status=${statusFilter}&legalBasis=${legalFilter}&organization=${orgFilter}&country=${countryFilter}&fundingScheme=${fundingSchemeFilter}&proj_id=${idFilter}&topic=${topicsFilter}&sortField=${sortField}&sortOrder=${sortOrder}`)
       .then(res => res.json())
       .then((data: Project[]) => setProjects(data))
       .catch(console.error);
@@ -77,7 +80,8 @@ export const useAppState = () => {
           countries: data.countries,
           legalBases: data.legalBases,
           fundingSchemes: data.fundingSchemes,
-          ids: []
+          ids: [],
+          topics: data.topics
         });
       });
   };

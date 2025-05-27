@@ -22,11 +22,6 @@ export interface Project {
 
 export interface ProjectDetailsProps {
   project: Project;
-//  question: string;
-//  setQuestion: React.Dispatch<React.SetStateAction<string>>;
-//  askChatbot: () => void;
-//  chatHistory: ChatMessage[];
-//  messagesEndRef: React.RefObject<HTMLDivElement>;
 }
 
 
@@ -57,6 +52,7 @@ export interface FilterState {
   organization: string;
   country: string;
   legalBasis: string;
+  topics: string;
   minYear: string;
   maxYear: string;
   minFunding: string;
@@ -77,6 +73,7 @@ export interface AvailableFilters {
   legalBases: string[];
   fundingSchemes: string[];
   ids: string[];
+  topics: string[];
 }
 
 export interface ProjectExplorerProps {
@@ -95,6 +92,8 @@ export interface ProjectExplorerProps {
   setFundingSchemeFilter: (value: string) => void;
   idFilter: string;
   setIdFilter: (value: string) => void;
+  topicsFilter: string;
+  setTopicsFilter: (value: string) => void;
   setSortField: (field: string) => void;
   sortField: string;
   setSortOrder : (order: "asc" | "desc") => void;

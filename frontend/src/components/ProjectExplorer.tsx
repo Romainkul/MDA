@@ -27,6 +27,7 @@ interface FilterOptions {
   countries: string[];
   fundingSchemes: string[];
   ids: string[];
+  topics: string[];
 }
 const MIN_SEARCH_LEN = 3;
 
@@ -51,6 +52,8 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   setFundingSchemeFilter,
   idFilter,
   setIdFilter,
+  topicsFilter,
+  setTopicsFilter,
   setSortField,
   sortField,
   setSortOrder,
@@ -72,6 +75,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     countries: [],
     fundingSchemes: [],
     ids: [],
+    topics: [],
   });
   const [loadingFilters, setLoadingFilters] = useState(false);
 
@@ -86,6 +90,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     if (search.length >= MIN_SEARCH_LEN) params.set("search", search);
     if (idFilter.length >= MIN_SEARCH_LEN) params.set("proj_id", idFilter);
     if (fundingSchemeFilter)   params.set("fundingScheme", fundingSchemeFilter);
+    if (topicsFilter)          params.set("topics", topicsFilter);
     params.set("sortField",     sortField);
     params.set("sortOrder",     sortOrder);
 
@@ -102,6 +107,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     search,
     idFilter,
     fundingSchemeFilter,
+    topicsFilter,
     sortField,
     sortOrder,
   ]);
@@ -188,6 +194,15 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             width="180px"
           >
             {filterOpts.fundingSchemes.map((c) => <option key={c} value={c}>{c}</option>)}
+          </ChakraSelect>
+          <ChakraSelect
+            placeholder={loadingFilters ? "Loading..." : "Funding Scheme"}
+            value={topicsFilter}
+            onChange={(e) => { setTopicsFilter(e.target.value); setPage(0); }}
+            isDisabled={loadingFilters}
+            width="180px"
+          >
+            {filterOpts.topics.map((c) => <option key={c} value={c}>{c}</option>)}
           </ChakraSelect>
         </Flex>
 
