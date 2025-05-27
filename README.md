@@ -105,12 +105,19 @@ The system is built around data from the Horizon Europe research program (CORDIS
     cd frontend
     npm run dev
     ```
+
+7. Alternatively it can be launched as a Docker Image:
+```bash
+docker build -t mda_eu_project:latest .
+```
+
 ## Usage
 
 ### Web Application
 
 - Start the backend API as above.
 - Access the web UI via your browser at `http://localhost:8000`.
+- With Docker, the 8000 becomes 4444/api due to the reverse proxy.
 
 ### API Endpoints
 
@@ -156,3 +163,4 @@ Run the script to train the model, evaluate it, save artifacts, and score incomi
 
 - European Union Open Data Portal (CORDIS)
 - Open-source contributors and projects (FastAPI, FAISS, Whoosh, LangChain, Polars)
+- Course and teachers of Modern Data Analytics which/who made this project possible
