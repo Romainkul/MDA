@@ -415,8 +415,10 @@ def get_filters(request: Request):
         df = df.filter(pl.col("list_name").list.contains(org))
     if c := params.get("country"):
         df = df.filter(pl.col("list_country").list.contains(c))
-    if t := params.get("topics"):
+    if t := params.get("topic"):
         df = df.filter(pl.col("list_euroSciVocTitle").list.contains(t))
+    if fs := params.get("fundingScheme"):
+        df = df.filter(pl.col("_fundingScheme_lc").str.contains(fs.lower()))
     if search := params.get("search"):
         df = df.filter(pl.col("_title_lc").str.contains(search.lower()))
 
