@@ -122,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }));
 
   const filterKeys: Array<keyof FilterState> = [
-    'status', 'organization', 'country', 'legalBasis','topics','fundingScheme',
+    'status', 'organization', 'country', 'legalBasis','topic','fundingScheme',
   ];
 
   if (loadingStats && !Object.keys(statsData).length) {
