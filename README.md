@@ -1,3 +1,14 @@
+---
+title: EU Explorer (MDA Assignment)   
+emoji: 🤖                         
+colorFrom: purple                 
+colorTo: indigo                   
+sdk: docker                       
+app_port: 4444                    
+pinned: false
+---
+Hugginface spaces setup
+
 # Interactive Retrieval-Augmented Generation for Semantic Exploration of Horizon Europe Research Data
 
 **A Web Application for Question Answering and Research Trend Analysis**
