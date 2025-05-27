@@ -50,13 +50,13 @@ interface ChartDataShape { labels: string[]; values: number[]; }
 interface Stats { [key: string]: ChartDataShape; }
 
 // define the six charts and their component types
-const chartOrder: { key: string; type: ChartType }[] = [
-  { key: "Projects per Year",          type: "line"     },
-  { key: "Project-Size Distribution",  type: "bar"      },
-  { key: "Co-funding Ratio by Scheme", type: "bar"      },
-  { key: "Top 10 Topics (€ M)",        type: "bar"      },
-  { key: "Funding Range Breakdown",    type: "pie"      },
-  { key: "Projects per Country",       type: "doughnut" },
+const chartOrder: { key:string; name: string; type: ChartType }[] = [
+  { key: "ppy", name: "Projects per Year",          type: "line"     },
+  { key: "psd",name: "Project-Size Distribution",  type: "bar"      },
+  { key: "frs",name: "Co-funding Ratio by Scheme", type: "bar"      },
+  { key: "top10",name: "Top 10 Topics (€ M)",        type: "bar"      },
+  { key: "frb",name: "Funding Range Breakdown",    type: "pie"      },
+  { key: "ppc",name: "Projects per Country",       type: "doughnut" },
 ];
 
 const FILTER_LABELS: Record<keyof FilterState, string> = {
@@ -215,16 +215,16 @@ const Dashboard: React.FC<DashboardProps> = ({
         </Flex>
       )}
       <SimpleGrid columns={{ base:1, md:2, lg:3 }} spacing={6}>
-        {chartOrder.map(({ key, type }) => {
+        {chartOrder.map(({key,name, type }) => {
           const raw = statsData[key]!;
-
+          if (!raw) return null;
           // ---- properly typed Chart.js data & options ----
           if (type === "bar") {
             const data: ChartData<"bar", number[], string> = {
               labels: raw.labels,
               datasets: [
                 {
-                  label: key,
+                  label: name,
                   data: raw.values,
                   backgroundColor: "#003399",
                   borderColor: "#FFCC00",
@@ -240,12 +240,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 },
                 title: {
                   display: true,
-                  text: key,
+                  text: name,
                 },
               },
             };
             return (
-              <Box key={key} bg="white" borderRadius="md" p={4}>
+              <Box key={name} bg="white" borderRadius="md" p={4}>
                 <Bar data={data} options={options} />
               </Box>
             );
@@ -255,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               labels: raw.labels,
               datasets: [
                 {
-                  label: key,
+                  label: name,
                   data: raw.values,
                   backgroundColor: "#003399",
                   borderColor: "#FFCC00",
@@ -271,12 +271,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 },
                 title: {
                   display: true,
-                  text: key,
+                  text: name,
                 },
               },
             };
             return (
-              <Box key={key} bg="white" borderRadius="md" p={4}>
+              <Box key={name} bg="white" borderRadius="md" p={4}>
                 <Line data={data} options={options} />
               </Box>
             );
@@ -286,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               labels: raw.labels,
               datasets: [
                 {
-                  label: key,
+                  label: name,
                   data: raw.values,
                   backgroundColor: "#003399",
                   borderColor: "#FFCC00",
@@ -302,12 +302,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 },
                 title: {
                   display: true,
-                  text: key,
+                  text: name,
                 },
               },
             };
             return (
-              <Box key={key} bg="white" borderRadius="md" p={4}>
+              <Box key={name} bg="white" borderRadius="md" p={4}>
                 <Pie data={data} options={options} />
               </Box>
             );
@@ -317,7 +317,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               labels: raw.labels,
               datasets: [
                 {
-                  label: key,
+                  label: name,
                   data: raw.values,
                   backgroundColor: "#003399",
                   borderColor: "#FFCC00",
@@ -333,12 +333,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 },
                 title: {
                   display: true,
-                  text: key,
+                  text: name,
                 },
               },
             };
             return (
-              <Box key={key} bg="white" borderRadius="md" p={4}>
+              <Box key={name} bg="white" borderRadius="md" p={4}>
                 <Doughnut data={data} options={options} />
               </Box>
             );

@@ -589,12 +589,12 @@ def get_stats(request: Request):
     country_counts = country["count"].to_list()
 
     return {
-        "Projects per Year":          {"labels": years,          "values": year_counts},
-        "Project-Size Distribution":  {"labels": size_labels,    "values": size_counts},
-        "Co-funding Ratio by Scheme": {"labels": scheme_labels,  "values": scheme_values},
-        "Top 10 Topics (€ M)":        {"labels": topic_labels,   "values": topic_values},
-        "Funding Range Breakdown":    {"labels": fr_labels,      "values": fr_counts},
-        "Projects per Country":       {"labels": country_labels, "values": country_counts},
+        "ppy":          {"labels": years,          "values": year_counts},
+        "psd":  {"labels": size_labels,    "values": size_counts},
+        "frs": {"labels": scheme_labels,  "values": scheme_values},
+        "top10":        {"labels": topic_labels,   "values": topic_values},
+        "frb":    {"labels": fr_labels,      "values": fr_counts},
+        "ppc":       {"labels": country_labels, "values": country_counts},
     }
 
 @app.get("/api/project/{project_id}/organizations")
