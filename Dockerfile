@@ -14,14 +14,17 @@ RUN pip install --no-cache-dir gunicorn uvicorn
 
 FROM python:3.11-slim as runtime
 
-
-USER root
 USER root
 RUN apt-get update && \
     apt-get install -y nginx python3-pip curl gnupg lsb-release && \
     rm -rf /var/lib/apt/lists/* && \
     rm -f /etc/nginx/sites-enabled/default && \
     rm -f /etc/nginx/conf.d/default.conf
+
+ENV HF_HOME=/tmp/hf_cache \
+    TRANSFORMERS_CACHE=/tmp/hf_cache \
+    HF_HUB_CACHE=/tmp/hf_cache \
+    XDG_CACHE_HOME=/tmp/hf_cache
 
 RUN mkdir -p \
       /var/cache/nginx/client_temp \
@@ -36,24 +39,18 @@ RUN mkdir -p \
       /var/lib/nginx/fastcgi \
       /var/lib/nginx/scgi \
       /var/lib/nginx/uwsgi && \
+      /tmp/hf_cache &&\
     chmod -R a+rwx /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx && \
     touch /var/log/nginx/error.log /var/log/nginx/access.log && \
-    chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx
+    chown -R www-data:www-data /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx && \
+    chmod 777 /tmp/hf_cache
 
-ENV HF_HOME=/tmp/hf_cache \
-    TRANSFORMERS_CACHE=/tmp/hf_cache \
-    HF_HUB_CACHE=/tmp/hf_cache \
-    XDG_CACHE_HOME=/tmp/hf_cache
-
-RUN mkdir -p /tmp/hf_cache \
- && chmod 777 /tmp/hf_cache
-
+# Install Python dependencies
 COPY --from=backend-builder /app/backend/requirements.txt /tmp/requirements.txt
 
 RUN python3 -m pip install --no-cache-dir \
       -r /tmp/requirements.txt \
     && python3 -m pip install --no-cache-dir fastapi starlette uvicorn
-
 
 COPY --from=frontend-builder /app/frontend/dist /app/static
 COPY --from=backend-builder /app/backend /app/app
