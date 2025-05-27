@@ -38,7 +38,7 @@ RUN mkdir -p \
       /var/lib/nginx/proxy \
       /var/lib/nginx/fastcgi \
       /var/lib/nginx/scgi \
-      /var/lib/nginx/uwsgi && \
+      /var/lib/nginx/uwsgi \
       /tmp/hf_cache &&\
     chmod -R a+rwx /var/cache/nginx /var/log/nginx /var/run/nginx /var/lib/nginx && \
     touch /var/log/nginx/error.log /var/log/nginx/access.log && \
