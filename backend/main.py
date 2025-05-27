@@ -26,7 +26,8 @@ from transformers import (  # Transformers for LLM pipeline
     AutoTokenizer,
     pipeline,
     T5ForConditionalGeneration,
-    T5Tokenizer
+    T5Tokenizer,
+    MT5ForConditionalGeneration, MT5TokenizerFast
 )
 
 # LangChain imports for RAG
@@ -122,8 +123,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 3) Build Seq2Seq pipeline and wrap in LangChain
     logger.info("Initializing LLM pipeline")
-    tokenizer = T5Tokenizer.from_pretrained(settings.llm_model)
-    model = T5ForConditionalGeneration.from_pretrained(settings.llm_model)
+    tokenizer = MT5TokenizerFast.from_pretrained(settings.llm_model)
+    model = MT5ForConditionalGeneration.from_pretrained(settings.llm_model)
     model = torch.quantization.quantize_dynamic(
         model, {torch.nn.Linear}, dtype=torch.qint8
     )
@@ -428,7 +429,7 @@ def get_filters(request: Request):
         "legalBases":   normalize(df["legalBasis"].to_list()),
         "organizations": normalize(df["list_name"].explode().to_list()),
         "countries":    normalize(df["list_country"].explode().to_list()),
-        "fundingSchemes": normalize(df["fundingScheme"].explode().to_list()),
+        "fundingSchemes": normalize(df["fundingScheme"].to_list()),
         "topics":       normalize(df["list_euroSciVocTitle"].explode().to_list()),
     }
 
@@ -533,8 +534,7 @@ def get_stats(request: Request):
         )
     )
     ratio = (
-        clean.explode("fundingScheme")
-             .group_by("fundingScheme")
+        clean.group_by("fundingScheme")
              .agg(pl.col("ecMaxContributionRatio").mean().alias("avg_ratio"))
              .sort("avg_ratio", descending=True)
              .head(10)
