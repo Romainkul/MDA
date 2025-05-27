@@ -28,10 +28,10 @@ whoosh==2.7.4
 
 # Transformers
 torch==2.7.0
-blobfile>=1.5.0
-tiktoken>=0.4.0
+blobfile==3.0.0
+tiktoken==0.9.0
 sentencepiece==0.2.0
-transformers==4.62.3
+transformers==4.52.3
 torchvision==0.22.0
 sympy==1.14.0
 peft==0.15.2
