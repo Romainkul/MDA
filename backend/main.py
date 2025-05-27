@@ -391,6 +391,8 @@ def get_projects(
             pub_counts[p] = pub_counts.get(p, 0) + 1
         row["publications"] = pub_counts
 
+        row["startDate"] = row["startDate"].date().isoformat() if row["startDate"] else None
+        row["endDate"]   = row["endDate"].date().isoformat() if row["endDate"] else None
         projects.append(row)
 
     return projects
