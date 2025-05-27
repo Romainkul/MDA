@@ -435,8 +435,8 @@ def get_filters(request: Request):
 @app.get("/api/stats")
 def get_stats(request: Request):
     """
-    Compute various statistics on projects with optional filters for status, legal basis, funding, etc.
-    Returns a dict of chart data.
+    Compute various statistics on projects with optional filters for status,
+    legal basis, funding, start/end years, etc. Returns a dict of chart data.
     """
     df = app.state.df
     lf = df.lazy()
@@ -490,8 +490,11 @@ def get_stats(request: Request):
           .sort("year")
           .collect()
     )
-    years        = yearly["year"].to_list()
-    year_counts  = yearly["count"].to_list()
+    years       = yearly["year"].to_list()
+    year_counts = yearly["count"].to_list()
+
+    # fixed bucket order
+    size_order = ["<100 K","100 K–500 K","500 K–1 M","1 M–5 M","5 M–10 M","≥10 M"]
 
     # 2) Project-Size Distribution (Bar)
     size_buckets = (
@@ -508,7 +511,7 @@ def get_stats(request: Request):
         .agg(pl.count().alias("count"))
         .with_columns(
             pl.col("size_range")
-              .apply(lambda x: ["<100 K","100 K–500 K","500 K–1 M","1 M–5 M","5 M–10 M","≥10 M"].index(x))
+              .replace_strict(size_order, list(range(len(size_order))))
               .alias("order")
         )
         .sort("order")
@@ -566,11 +569,16 @@ def get_stats(request: Request):
         )
         .group_by("funding_range")
         .agg(pl.count().alias("count"))
-        .sort("funding_range")
+        .with_columns(
+            pl.col("funding_range")
+              .replace_strict(size_order, list(range(len(size_order))))
+              .alias("order")
+        )
+        .sort("order")
         .collect()
     )
-    fr_labels   = fund_range["funding_range"].to_list()
-    fr_counts   = fund_range["count"].to_list()
+    fr_labels = fund_range["funding_range"].to_list()
+    fr_counts = fund_range["count"].to_list()
 
     # 6) Projects per Country (Doughnut)
     country      = (
@@ -585,12 +593,12 @@ def get_stats(request: Request):
     country_counts = country["count"].to_list()
 
     # Clean out any nulls before returning
-    years,         year_counts    = clean_data(years,         year_counts)
-    size_labels,   size_counts    = clean_data(size_labels,   size_counts)
-    scheme_labels, scheme_values  = clean_data(scheme_labels, scheme_values)
-    topic_labels,  topic_values   = clean_data(topic_labels,  topic_values)
-    fr_labels,     fr_counts      = clean_data(fr_labels,     fr_counts)
-    country_labels, country_counts= clean_data(country_labels, country_counts)
+    years,           year_counts   = clean_data(years,           year_counts)
+    size_labels,     size_counts   = clean_data(size_labels,     size_counts)
+    scheme_labels,   scheme_values = clean_data(scheme_labels,   scheme_values)
+    topic_labels,    topic_values  = clean_data(topic_labels,    topic_values)
+    fr_labels,       fr_counts     = clean_data(fr_labels,       fr_counts)
+    country_labels,  country_counts= clean_data(country_labels,  country_counts)
 
     return {
         "ppy":   {"labels": years,           "values": year_counts},
@@ -600,6 +608,7 @@ def get_stats(request: Request):
         "frb":   {"labels": fr_labels,       "values": fr_counts},
         "ppc":   {"labels": country_labels,  "values": country_counts},
     }
+
 
 @app.get("/api/project/{project_id}/organizations")
 def get_project_organizations(project_id: str):
