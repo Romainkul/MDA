@@ -456,6 +456,12 @@ def get_stats(request: Request):
     if c := params.get("country"):
         lf = lf.filter(pl.col("list_country").list.contains(c))
         df = df.filter(pl.col("list_country").list.contains(c))
+    if eu := params.get("topic"):
+        lf = lf.filter(pl.col("list_euroSciVocTitle").list.contains(eu))
+        df = df.filter(pl.col("list_euroSciVocTitle").list.contains(eu))
+    if fs := params.get("fundingScheme"):
+        lf = lf.filter(pl.col("_fundingScheme_lc").str.contains(fs.lower()))
+        df = df.filter(pl.col("_fundingScheme_lc").str.contains(fs.lower()))
     if mn := params.get("minFunding"):
         lf = lf.filter(pl.col("ecMaxContribution") >= int(mn))
         df = df.filter(pl.col("ecMaxContribution") >= int(mn))

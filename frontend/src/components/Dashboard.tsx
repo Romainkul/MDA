@@ -64,7 +64,8 @@ const FILTER_LABELS: Record<keyof FilterState, string> = {
   organization: "Organization",
   country:      "Country",
   legalBasis:   "Legal Basis",
-  topics:       "EuroSciVoc",
+  topic:       "EuroSciVoc",
+  fundingScheme: "Funding Scheme",
 };
 
 type ChartType = "bar" | "pie" | "doughnut" | "line";
@@ -121,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     }));
 
   const filterKeys: Array<keyof FilterState> = [
-    'status', 'organization', 'country', 'legalBasis','topics'
+    'status', 'organization', 'country', 'legalBasis','topics','fundingScheme',
   ];
 
   if (loadingStats && !Object.keys(statsData).length) {
@@ -139,7 +140,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               : key === 'organization' ? 'organizations'
               : key === 'country' ? 'countries'
               : key === "legalBasis" ? "legalBases"
-              : 'topics'
+              : key === "topic" ? "topics"
+              : 'fundingSchemes'
             ] || [];
             const isOrg = key === 'organization';
             return (

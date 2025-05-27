@@ -52,7 +52,8 @@ export interface FilterState {
   organization: string;
   country: string;
   legalBasis: string;
-  topics: string;
+  topic: string;
+  fundingScheme: string;
   minYear: string;
   maxYear: string;
   minEndYear: string;

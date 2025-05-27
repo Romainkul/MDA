@@ -130,10 +130,8 @@ export default function ProjectDetails({
             <Text fontWeight="bold">Acronym</Text>
             <Text>{project.acronym}</Text>
           </Box>
-          <Box><Text fontWeight="bold">Start Date</Text><Text>{project.startDate && project.startDate !== "NaT" && !isNaN(Date.parse(project.startDate))
-                ? new Date(project.startDate).toISOString().split("T")[0]: "--"}</Text></Box>
-          <Box><Text fontWeight="bold">End Date</Text><Text>{project.endDate && project.endDate !== "NaT" && !isNaN(Date.parse(project.endDate))
-                ? new Date(project.endDate).toISOString().split("T")[0]: "--"}</Text></Box>
+          <Box><Text fontWeight="bold">Start Date</Text><Text>{project.startDate}</Text></Box>
+          <Box><Text fontWeight="bold">End Date</Text><Text>{project.endDate}</Text></Box>
           <Box><Text fontWeight="bold">Funding (EC max)</Text><Text>€{fmtNum(project.ecMaxContribution)}</Text></Box>
           <Box><Text fontWeight="bold">Total Cost</Text><Text>€{fmtNum(project.totalCost)}</Text></Box>
           <Box><Text fontWeight="bold">Funding Scheme</Text><Text>{project.fundingScheme}</Text></Box>
