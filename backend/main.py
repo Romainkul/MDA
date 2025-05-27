@@ -520,28 +520,21 @@ def get_stats(request: Request):
     size_labels = size_buckets["size_range"].to_list()
     size_counts = size_buckets["count"].to_list()
 
-    # 3) EU Co-funding Ratio by Scheme (Bar)
-    clean = (
-        df.filter(
-            pl.col("ecMaxContribution").is_not_null() &
-            pl.col("totalCost").is_not_null() &
-            (pl.col("totalCost") != 0)
+    # 3) Scheme Frequency (Bar)
+    scheme_counts_df = (
+        df.with_columns(
+            pl.col("fundingScheme")
+                .cast(pl.List(pl.Utf8))
+                .alias("fundingScheme")
         )
-        .with_columns(
-            (pl.col("ecMaxContribution").cast(pl.Float64) /
-             pl.col("totalCost").cast(pl.Float64))
-            .alias("ecMaxContributionRatio")
-        )
+        .group_by("fundingScheme")
+        .agg(pl.count().alias("count"))
+        .sort("count", descending=True)
+        .head(10)
     )
-    ratio = (
-        clean.group_by("fundingScheme")
-             .agg(pl.col("ecMaxContributionRatio").mean().alias("avg_ratio"))
-             .sort("avg_ratio", descending=True)
-             .head(10)
-    )
-    scheme_labels = ratio["fundingScheme"].to_list()
-    scheme_values = (ratio["avg_ratio"] * 100).round(1).to_list()
 
+    scheme_labels = scheme_counts_df["fundingScheme"].to_list()
+    scheme_values = scheme_counts_df["count"].to_list()
     # 4) Top 10 Macro Topics by EC Contribution (Bar)
     top_topics   = (
         df.explode("list_euroSciVocTitle")

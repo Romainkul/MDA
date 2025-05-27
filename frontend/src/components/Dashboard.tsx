@@ -53,7 +53,7 @@ interface Stats { [key: string]: ChartDataShape; }
 const chartOrder: { key:string; name: string; type: ChartType }[] = [
   { key: "ppy", name: "Projects per Year",          type: "line"     },
   { key: "psd",name: "Project-Size Distribution",  type: "bar"      },
-  { key: "frs",name: "Co-funding Ratio by Scheme", type: "bar"      },
+  { key: "frs",name: "Top 10 Funding Schemes", type: "bar"      },
   { key: "top10",name: "Top 10 Topics (€ M)",        type: "bar"      },
   { key: "frb",name: "Funding Range Breakdown",    type: "pie"      },
   { key: "ppc",name: "Projects per Country",       type: "doughnut" },
@@ -156,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               </GridItem>
             );
           })}
-          
+
           {/* Start Year */}
           <GridItem colSpan={{ base: 1, md: 2 }}>
             <Box mb={6}>
@@ -265,6 +265,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             };
             const options: ChartOptions<"bar"> = {
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: {
                   position: "top" as LegendPosition,
@@ -276,8 +277,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               },
             };
             return (
-              <Box key={name} bg="white" borderRadius="md" p={4}>
-                <Bar data={data} options={options} />
+              <Box key={name} bg="white" borderRadius="md" p={4} height="300px" display="flex" alignItems="center">
+                <Bar data={data} options={options} height={250}/>
               </Box>
             );
           }
@@ -296,6 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             };
             const options: ChartOptions<"line"> = {
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: {
                   position: "top" as LegendPosition,
@@ -307,8 +309,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               },
             };
             return (
-              <Box key={name} bg="white" borderRadius="md" p={4}>
-                <Line data={data} options={options} />
+              <Box key={name} bg="white" borderRadius="md" p={4} height="300px" display="flex" alignItems="center">
+                <Line data={data} options={options} height={250}/>
               </Box>
             );
           }
@@ -327,6 +329,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             };
             const options: ChartOptions<"pie"> = {
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: {
                   position: "top" as LegendPosition,
@@ -338,8 +341,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               },
             };
             return (
-              <Box key={name} bg="white" borderRadius="md" p={4}>
-                <Pie data={data} options={options} />
+              <Box key={name} bg="white" borderRadius="md" p={4} height="300px" display="flex" alignItems="center">
+                <Pie data={data} options={options} height={250}/>
               </Box>
             );
           }
@@ -358,6 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             };
             const options: ChartOptions<"doughnut"> = {
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: {
                   position: "top" as LegendPosition,
@@ -369,8 +373,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               },
             };
             return (
-              <Box key={name} bg="white" borderRadius="md" p={4}>
-                <Doughnut data={data} options={options} />
+              <Box key={name} bg="white" borderRadius="md" p={4} height="300px" display="flex" alignItems="center">
+                <Doughnut data={data} options={options} height={250}/>
               </Box>
             );
           }
