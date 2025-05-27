@@ -196,7 +196,7 @@ const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
             {filterOpts.fundingSchemes.map((c) => <option key={c} value={c}>{c}</option>)}
           </ChakraSelect>
           <ChakraSelect
-            placeholder={loadingFilters ? "Loading..." : "Funding Scheme"}
+            placeholder={loadingFilters ? "Loading..." : "EuroSciVoc"}
             value={topicsFilter}
             onChange={(e) => { setTopicsFilter(e.target.value); setPage(0); }}
             isDisabled={loadingFilters}

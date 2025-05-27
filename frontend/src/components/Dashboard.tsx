@@ -64,7 +64,7 @@ const FILTER_LABELS: Record<keyof FilterState, string> = {
   organization: "Organization",
   country:      "Country",
   legalBasis:   "Legal Basis",
-  topics:       "Topics",
+  topics:       "EuroSciVoc",
 };
 
 type ChartType = "bar" | "pie" | "doughnut" | "line";
